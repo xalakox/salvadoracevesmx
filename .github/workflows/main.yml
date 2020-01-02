@@ -1,0 +1,13 @@
+name: CI
+on: [push]
+jobs:
+  deploy:
+    branches:
+      - master
+    runs-on: node:10.16
+    steps:
+    - uses: actions/checkout@v1
+    - name: install
+      run: npm i
+    - name: deploy
+      run: npm run deploy
