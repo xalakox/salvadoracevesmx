@@ -8,7 +8,7 @@ module.exports = {
       twitter: `salvadoraceves`,
     },
   },
-  pathPrefix: `/salvadoracevesmx`,
+  pathPrefix: ``,
   plugins: [
     {
       resolve: `gatsby-source-filesystem`,
