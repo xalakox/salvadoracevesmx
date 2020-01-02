@@ -1,0 +1,784 @@
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Sal's Blog]]></title><description><![CDATA[A blog and toughts and ideas]]></description><link>https://salvador.aceves.mx</link><generator>GatsbyJS</generator><lastBuildDate>Thu, 02 Jan 2020 00:52:04 GMT</lastBuildDate><item><title><![CDATA[NodeJS in Docker debugging with VSCode]]></title><description><![CDATA[I wont’t lie if I stated there was a before and after using the NodeJS debugger on a daily basis, however, there was yet another before and…]]></description><link>https://salvador.aceves.mx/nodejs-debug-docker-vscode/</link><guid isPermaLink="false">https://salvador.aceves.mx/nodejs-debug-docker-vscode/</guid><pubDate>Fri, 26 Apr 2019 23:46:37 GMT</pubDate><content:encoded>&lt;p&gt;I wont’t lie if I stated there was a before and after using the NodeJS debugger on a daily basis, however, there was yet another before and after handling the debugging inside my IDE (VSCode).&lt;/p&gt;
+&lt;p&gt;&lt;span
+      class=&quot;gatsby-resp-image-wrapper&quot;
+      style=&quot;position: relative; display: block; margin-left: auto; margin-right: auto;  max-width: 590px;&quot;
+    &gt;
+      &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/713407677149962ff30c736defe799e7/9b3f4/poster.jpg&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+    &lt;span
+    class=&quot;gatsby-resp-image-background-image&quot;
+    style=&quot;padding-bottom: 66.66666666666666%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/jpeg;base64,/9j/2wBDABALDA4MChAODQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2P/2wBDARESEhgVGC8aGi9jQjhCY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2P/wgARCAANABQDASIAAhEBAxEB/8QAFwAAAwEAAAAAAAAAAAAAAAAAAAMEAv/EABUBAQEAAAAAAAAAAAAAAAAAAAAB/9oADAMBAAIQAxAAAAGeXIMEkf/EABoQAAEFAQAAAAAAAAAAAAAAABEAAhAhIjH/2gAIAQEAAQUCyhTeEz//xAAUEQEAAAAAAAAAAAAAAAAAAAAQ/9oACAEDAQE/AT//xAAUEQEAAAAAAAAAAAAAAAAAAAAQ/9oACAECAQE/AT//xAAZEAABBQAAAAAAAAAAAAAAAAAAAQIgIUH/2gAIAQEABj8CdWCx/8QAGxABAAICAwAAAAAAAAAAAAAAAQARMUFRYXH/2gAIAQEAAT8hC1xnXTLaGjmMF7FxiXP/2gAMAwEAAgADAAAAEGA//8QAFBEBAAAAAAAAAAAAAAAAAAAAEP/aAAgBAwEBPxA//8QAFBEBAAAAAAAAAAAAAAAAAAAAEP/aAAgBAgEBPxA//8QAGRABAAMBAQAAAAAAAAAAAAAAAQARITHx/9oACAEBAAE/EKaxEd1pjL0XYashBRYQV9mpb72DJ//Z&apos;); background-size: cover; display: block;&quot;
+  &gt;&lt;/span&gt;
+  &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        alt=&quot;fancy brogrammer setup&quot;
+        title=&quot;fancy brogrammer setup&quot;
+        src=&quot;/static/713407677149962ff30c736defe799e7/88218/poster.jpg&quot;
+        srcset=&quot;/static/713407677149962ff30c736defe799e7/7237a/poster.jpg 148w,
+/static/713407677149962ff30c736defe799e7/0cfdf/poster.jpg 295w,
+/static/713407677149962ff30c736defe799e7/88218/poster.jpg 590w,
+/static/713407677149962ff30c736defe799e7/77d57/poster.jpg 885w,
+/static/713407677149962ff30c736defe799e7/5a917/poster.jpg 1180w,
+/static/713407677149962ff30c736defe799e7/9b3f4/poster.jpg 1950w&quot;
+        sizes=&quot;(max-width: 590px) 100vw, 590px&quot;
+        loading=&quot;lazy&quot;
+      /&gt;
+  &lt;/a&gt;
+    &lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;Like many of you I develop NodeJS apps and a lot of the times these apps have to be handled inside of containers, because keeping track of the NodeJS versions for every app can lead to unnecessary host system complexity, sometimes you need to get several servers up simultaneously (i.e. microservices apps) and it would require to maintain multiple shell sessions to switch the NodeJS version between them; but this is not a compaint post against &lt;a href=&quot;https://github.com/nvm-sh/nvm&quot;&gt;nvm&lt;/a&gt;, rather how I had to set it up to work inside Docker.&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;.Dockerfile&lt;/em&gt;&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;text&quot;&gt;&lt;pre class=&quot;language-text&quot;&gt;&lt;code class=&quot;language-text&quot;&gt;FROM node:8.10
+COPY . /app
+WORKDIR /app
+RUN echo &amp;quot;deb [check-valid-until=no] http://archive.debian.org/debian \
+jessie-backports main&amp;quot; &amp;gt; /etc/apt/sources.list.d/jessie-backports.list
+RUN sed -i &amp;#39;/deb http:\/\/deb.debian.org\/debian jessie-updates main/d&amp;#39; \
+/etc/apt/sources.list
+RUN apt-get -o Acquire::Check-Valid-Until=false update
+RUN apt-get install -yq psmisc
+RUN npm install --silent
+CMD [&amp;quot;npm&amp;quot;, &amp;quot;run&amp;quot;, &amp;quot;dev&amp;quot;]&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Most of the setup is to be able to install &lt;a href=&quot;http://psmisc.sourceforge.net/&quot;&gt;psmisc&lt;/a&gt; that includes a tool called fuser, what that utility will allow us is to terminate the execution of node or rather restart it on a more stable way; for some reason when we are running the inspect flag on node we have a sticky port situation where the process hangs to the port and it will not be able to kill the connection to the attached debugger on time, so this helps; there is a node only alternative for killing processes port based, however, it was not stable enough to be useful, going system utility mode is just more stable.&lt;/p&gt;
+&lt;p&gt;And now for the package.json setup (scripts section):&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;json&quot;&gt;&lt;pre class=&quot;language-json&quot;&gt;&lt;code class=&quot;language-json&quot;&gt;&lt;span class=&quot;token property&quot;&gt;&quot;scripts&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token punctuation&quot;&gt;{&lt;/span&gt;
+     &lt;span class=&quot;token property&quot;&gt;&quot;test&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;jest -i --bail --coverage --forceExit&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+     &lt;span class=&quot;token property&quot;&gt;&quot;inspect&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;fuser -k 9231/tcp; fuser -k 7070/tcp; node --inspect=0.0.0.0:9231 server.js&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+     &lt;span class=&quot;token property&quot;&gt;&quot;dev&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;npm install &amp;amp;&amp;amp; nodemon --delay 180ms -L --config /app/nodemon.json --exec &apos;npm run inspect&apos;&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+     &lt;span class=&quot;token property&quot;&gt;&quot;start&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;node server.js&quot;&lt;/span&gt;
+   &lt;span class=&quot;token punctuation&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Ignoring test and start which are scripts intended for devOps and production running; I am using two commands for running this app, the first one (dev) which is referred at the Dockerfile as default runs an instance of &lt;a href=&quot;https://www.npmjs.com/package/nodemon&quot;&gt;nodemon&lt;/a&gt; with the L flag that makes it run more stable inside of Docker with a mapped volume on the host system and an inspect command that makes it easier to read this file kills the processes that are bound to ports 9231 (in this case the debugging port and port 7070 which is my default app port, you should accommodate for your own default app port. I am also telling nodemon to pull a configuration file from nodemon.json that handles exceptions and other details.&lt;/p&gt;
+&lt;p&gt;With this setup the app will start inside of Docker waiting on a connection on ports 9231 and 7070, so it’s important to map these ports when running Docker, I normally use &lt;a href=&quot;https://docs.docker.com/compose/&quot;&gt;docker-compose&lt;/a&gt; do setup my environment and the ports mapped, the following is an example configuration for this particular setup.&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;text&quot;&gt;&lt;pre class=&quot;language-text&quot;&gt;&lt;code class=&quot;language-text&quot;&gt;backend:
+  build: ./../backend
+  container_name: &amp;quot;backend&amp;quot;
+  ports:
+    - 7070:7070
+    - 9231:9231
+  volumes:
+    - ./../backend:/app
+    - /app/node_modules
+  env_file: ./../backend/.env
+  depends_on:
+    - mongodb&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Using this setup helps us maintain the docker-compose file as it’s own repository and we can have an env file to maintain the session variables required for the app to run.&lt;/p&gt;
+&lt;p&gt;Now all that is left is to configure vs code to connect to the debugger, it is pretty much straight forward, create or start the VSCode debugger to have it create a folder named .vscode on the root of the project, then on a file named launch.json include:&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;text&quot;&gt;&lt;pre class=&quot;language-text&quot;&gt;&lt;code class=&quot;language-text&quot;&gt;{
+  &amp;quot;version&amp;quot;: &amp;quot;0.2.0&amp;quot;,
+  &amp;quot;configurations&amp;quot;: [
+    {
+      &amp;quot;type&amp;quot;: &amp;quot;node&amp;quot;,
+      &amp;quot;request&amp;quot;: &amp;quot;attach&amp;quot;,
+      &amp;quot;name&amp;quot;: &amp;quot;Docker: Attach to server&amp;quot;,
+      &amp;quot;port&amp;quot;: 9231,
+      &amp;quot;address&amp;quot;: &amp;quot;localhost&amp;quot;,
+      &amp;quot;localRoot&amp;quot;: &amp;quot;${workspaceFolder}&amp;quot;,
+      &amp;quot;remoteRoot&amp;quot;: &amp;quot;/app/&amp;quot;,
+    },
+  ]
+}&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;And that’s it, just connect to the instance using F5 or re-run the app on the instance using Ctrl+Shift+F5 to restart and reconnect.&lt;/p&gt;
+&lt;p&gt;Addendum [Apr 30 2019]
+You might want to skip stepping into dependencies or JavaScript internals (like promise handling) adding this to the launch.json config file of VSCode:&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;text&quot;&gt;&lt;pre class=&quot;language-text&quot;&gt;&lt;code class=&quot;language-text&quot;&gt;&amp;quot;skipFiles&amp;quot;: 
+  &amp;quot;${workspaceFolder}/node_modules/**/*.js&amp;quot;,
+  &amp;quot;&amp;lt;node_internals&amp;gt;/**/*.js&amp;quot;
+]&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;</content:encoded></item><item><title><![CDATA[About Salvador]]></title><description><![CDATA[Hi there, I am a software developer since the Tandy TRS80 era,
+learned unix on a Solaris Spark machine; Web Dev since the CGI…]]></description><link>https://salvador.aceves.mx/about-salvador/</link><guid isPermaLink="false">https://salvador.aceves.mx/about-salvador/</guid><pubDate>Tue, 01 May 2018 22:12:03 GMT</pubDate><content:encoded>&lt;p&gt;Hi there, I am a software developer since the Tandy TRS80 era,
+learned unix on a Solaris Spark machine; Web Dev since the CGI
+/ XMLHttpRequest era.&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Walking the walk beats talking the talk.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;&lt;span
+      class=&quot;gatsby-resp-image-wrapper&quot;
+      style=&quot;position: relative; display: block; margin-left: auto; margin-right: auto;  max-width: 590px;&quot;
+    &gt;
+      &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/5fc04a019c5cdaccd2a936c9a29ec6cc/e7068/teen-sal.jpg&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+    &lt;span
+    class=&quot;gatsby-resp-image-background-image&quot;
+    style=&quot;padding-bottom: 64.765625%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/jpeg;base64,/9j/2wBDABALDA4MChAODQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2P/2wBDARESEhgVGC8aGi9jQjhCY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2P/wgARCAANABQDASIAAhEBAxEB/8QAFwAAAwEAAAAAAAAAAAAAAAAAAAIDBf/EABUBAQEAAAAAAAAAAAAAAAAAAAID/9oADAMBAAIQAxAAAAG0mlNKZpQ//8QAGxABAAICAwAAAAAAAAAAAAAAAQASAgMRITH/2gAIAQEAAQUC8eQnTBtluC1p/8QAFREBAQAAAAAAAAAAAAAAAAAAERD/2gAIAQMBAT8BGf/EABYRAQEBAAAAAAAAAAAAAAAAAAEREP/aAAgBAgEBPwGgzP/EABkQAAIDAQAAAAAAAAAAAAAAAAEQAAIRQf/aAAgBAQAGPwLIEaHj/8QAGxABAAIDAQEAAAAAAAAAAAAAAQARITFBYYH/2gAIAQEAAT8hqpgCJcQ+uw24+Rs5Ons0hWORVtNT/9oADAMBAAIAAwAAABCcH//EABYRAQEBAAAAAAAAAAAAAAAAAAEQIf/aAAgBAwEBPxBWp//EABYRAQEBAAAAAAAAAAAAAAAAAAABEf/aAAgBAgEBPxCI4//EABsQAQEAAwEBAQAAAAAAAAAAABEBACFBMVHh/9oACAEBAAE/EH9QIEdcMfA2ihB9wLt1LxkG5dbdl0/cpiLifHeZuxD45//Z&apos;); background-size: cover; display: block;&quot;
+  &gt;&lt;/span&gt;
+  &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        alt=&quot;Teen Sal with geek friends&quot;
+        title=&quot;Teen Sal with geek friends&quot;
+        src=&quot;/static/5fc04a019c5cdaccd2a936c9a29ec6cc/88218/teen-sal.jpg&quot;
+        srcset=&quot;/static/5fc04a019c5cdaccd2a936c9a29ec6cc/7237a/teen-sal.jpg 148w,
+/static/5fc04a019c5cdaccd2a936c9a29ec6cc/0cfdf/teen-sal.jpg 295w,
+/static/5fc04a019c5cdaccd2a936c9a29ec6cc/88218/teen-sal.jpg 590w,
+/static/5fc04a019c5cdaccd2a936c9a29ec6cc/77d57/teen-sal.jpg 885w,
+/static/5fc04a019c5cdaccd2a936c9a29ec6cc/5a917/teen-sal.jpg 1180w,
+/static/5fc04a019c5cdaccd2a936c9a29ec6cc/e7068/teen-sal.jpg 1280w&quot;
+        sizes=&quot;(max-width: 590px) 100vw, 590px&quot;
+        loading=&quot;lazy&quot;
+      /&gt;
+  &lt;/a&gt;
+    &lt;/span&gt;
+&lt;em&gt;w/nerd squad back in the 80s&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;I enjoy &lt;a href=&quot;https://www.github.com/xalakox&quot;&gt;software development&lt;/a&gt;, &lt;a href=&quot;https://www.instagram.com/xalakox/&quot;&gt;photography&lt;/a&gt;, &lt;a href=&quot;https://soundcloud.com/salvadoraceves&quot;&gt;playing guitar&lt;/a&gt;, &lt;a href=&quot;https://www.youtube.com/salvadoracevesosuna&quot;&gt;traveling&lt;/a&gt;,
+and OneWheel floating.&lt;/p&gt;
+&lt;p&gt;Currently living with my wife and my daugther at Frisco, TX and working full time as a ReactJS / NodeJS developer for &lt;a href=&quot;https://www.tourconnect.com&quot;&gt;TourConnect&lt;/a&gt; .&lt;/p&gt;
+&lt;p&gt;&lt;span
+      class=&quot;gatsby-resp-image-wrapper&quot;
+      style=&quot;position: relative; display: block; margin-left: auto; margin-right: auto;  max-width: 590px;&quot;
+    &gt;
+      &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/9540ec746423827d49ccbec52e8711e6/e937d/tc-photo.jpg&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+    &lt;span
+    class=&quot;gatsby-resp-image-background-image&quot;
+    style=&quot;padding-bottom: 75%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/jpeg;base64,/9j/2wBDABALDA4MChAODQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2P/2wBDARESEhgVGC8aGi9jQjhCY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2P/wgARCAAPABQDASIAAhEBAxEB/8QAFwAAAwEAAAAAAAAAAAAAAAAAAAMEBf/EABYBAQEBAAAAAAAAAAAAAAAAAAACA//aAAwDAQACEAMQAAABayCHSN0SH//EABoQAAMAAwEAAAAAAAAAAAAAAAABAgMREiL/2gAIAQEAAQUCm5b3J5FhTI12sB//xAAVEQEBAAAAAAAAAAAAAAAAAAAAEv/aAAgBAwEBPwGEP//EABYRAQEBAAAAAAAAAAAAAAAAAAATAf/aAAgBAgEBPwGmqP/EABoQAAIDAQEAAAAAAAAAAAAAAAABAiEyIkH/2gAIAQEABj8Cl0qNo0ib8Qr5Zs//xAAbEAADAQEAAwAAAAAAAAAAAAABESEAMZHB0f/aAAgBAQABPyETRKXuf9c9rsXerkWAioxF14e//9oADAMBAAIAAwAAABDTz//EABURAQEAAAAAAAAAAAAAAAAAABAR/9oACAEDAQE/EIP/xAAWEQADAAAAAAAAAAAAAAAAAAABEFH/2gAIAQIBAT8QEF//xAAeEAEAAgEEAwAAAAAAAAAAAAABABEhMUFxkWGB0f/aAAgBAQABPxCpGQdCifYaNeDGzPbLZuQI1dbHMNjmH0aPkgKPA4Pc/9k=&apos;); background-size: cover; display: block;&quot;
+  &gt;&lt;/span&gt;
+  &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        alt=&quot;TourConnect group photo&quot;
+        title=&quot;TourConnect group photo&quot;
+        src=&quot;/static/9540ec746423827d49ccbec52e8711e6/88218/tc-photo.jpg&quot;
+        srcset=&quot;/static/9540ec746423827d49ccbec52e8711e6/7237a/tc-photo.jpg 148w,
+/static/9540ec746423827d49ccbec52e8711e6/0cfdf/tc-photo.jpg 295w,
+/static/9540ec746423827d49ccbec52e8711e6/88218/tc-photo.jpg 590w,
+/static/9540ec746423827d49ccbec52e8711e6/77d57/tc-photo.jpg 885w,
+/static/9540ec746423827d49ccbec52e8711e6/e937d/tc-photo.jpg 1024w&quot;
+        sizes=&quot;(max-width: 590px) 100vw, 590px&quot;
+        loading=&quot;lazy&quot;
+      /&gt;
+  &lt;/a&gt;
+    &lt;/span&gt;
+&lt;em&gt;TourConnect’s Team at 🦅 ‘s nest in Colorado Sept 2018&lt;/em&gt;&lt;/p&gt;</content:encoded></item><item><title><![CDATA[Nuevos Caminos para el Content Marketing]]></title><description><![CDATA[La creación de contenido de calidad no sólo se puede basar en pura inspiración y creatividad; la creación puede partir a partir de insights…]]></description><link>https://salvador.aceves.mx/nuevos-caminos-para-el-content-marketing/</link><guid isPermaLink="false">https://salvador.aceves.mx/nuevos-caminos-para-el-content-marketing/</guid><pubDate>Tue, 01 Nov 2016 23:46:37 GMT</pubDate><content:encoded>&lt;p&gt;La creación de contenido de calidad no sólo se puede basar en pura inspiración y creatividad; la creación puede partir a partir de insights sobre los gustos de la audiencia, cuya relación con otros temás abre la puerta a crear contenido con mayor engagement y que pueda convertir en mayor medida de espectadores a fans participativos en el proceso de creación.&lt;/p&gt;
+&lt;h4&gt;¿ De que escribir ?&lt;/h4&gt;
+&lt;p&gt;Hay verticales de contenido que nos ayudan a ampliar las opciones de narrativa e ir mas ayá del hard-sell; la primera es definir a groso modo cuál será el tono de con el que nos debemos comunicar, una manera de conocer mas a la audiencia es encontrar de que otros temas de comunicación está hablando la audiencia.&lt;/p&gt;
+&lt;p&gt;Por ejemplo; si fuésemos una compañía que comercializa servicios financieros para el consumidor podemos encontrar los hábitos de conversación sobre TV de las personas que hablan de productos en este sector :&lt;/p&gt;
+&lt;p&gt;&lt;span
+      class=&quot;gatsby-resp-image-wrapper&quot;
+      style=&quot;position: relative; display: block; margin-left: auto; margin-right: auto;  max-width: 590px;&quot;
+    &gt;
+      &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/31bafcace65ea224b664c25f66e17f3e/11d19/20b24-1_teydowzwilskkaqehs79g.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+    &lt;span
+    class=&quot;gatsby-resp-image-background-image&quot;
+    style=&quot;padding-bottom: 85.50000000000001%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAARCAIAAABSJhvpAAAACXBIWXMAAAsSAAALEgHS3X78AAACCElEQVQ4y3WTaVPbMBCG8/9/Vb+1DMwUGlqY0oTESWzZsSxZ1+p2V4TmKux4ZI2kZy+9mk3/TCvFGJs+NwAYR3G+MjvOYozeOQvwGVwO+JDzR3BKSRuzXFc+hP/JnLMYRwMQznZPsNaGkpq/3EJwl1wZxsH+Xuyk4FIoTOECTiEOavxaP3hJY0z5PLmC5+zzN/L60G2swijmBIeAxdj5c7emNKXJWkw8npMpJhx8nlh7K7paSH2CDWhOxetPHnxE0rmAIzpIGfsQE2ZS/iGho37DlveUS9wpMK47gGY/LAmPIQB4JPEDcOgASTT0UIJPiYG/WVM9ciFVgY0xUkrGBWnalPIB08Ya46QG9HMIj4aFK+cfSUu77lB2SduFBP3O/Poi7aSl0dpq7bQCLQQbmNIYBMuOOU3a9St+L7i2Ft7hnPIouHp8VsyCfSvYFz1gFR5MT5qO1Ifr0Ys73W+w+uD9O4y6EyPvqPle71MATCS99eOoD0qa3WJBGrnYNkqIfC4SFA3mOoyKkid4uUnxSiPl8N1qPv+xNUoTQgDshUgMXpfGjb76s8JeokbEiO9EcI7dxNpVRduBc6ONc+6Y1+woXRwZZXWDrlsUUV03VVV13R4bQOmwq7a77Q7XP35VaHRsuo60bYvhaE/RDU7KdTgnlcRLvZLtBZwy6jLEooeSC/bi6vSV/QXQdNqQ3AiSSwAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
+  &gt;&lt;/span&gt;
+  &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        alt=&quot;20b24 1 teydowzwilskkaqehs79g&quot;
+        title=&quot;20b24 1 teydowzwilskkaqehs79g&quot;
+        src=&quot;/static/31bafcace65ea224b664c25f66e17f3e/799d3/20b24-1_teydowzwilskkaqehs79g.png&quot;
+        srcset=&quot;/static/31bafcace65ea224b664c25f66e17f3e/00d96/20b24-1_teydowzwilskkaqehs79g.png 148w,
+/static/31bafcace65ea224b664c25f66e17f3e/0b23c/20b24-1_teydowzwilskkaqehs79g.png 295w,
+/static/31bafcace65ea224b664c25f66e17f3e/799d3/20b24-1_teydowzwilskkaqehs79g.png 590w,
+/static/31bafcace65ea224b664c25f66e17f3e/11d19/20b24-1_teydowzwilskkaqehs79g.png 800w&quot;
+        sizes=&quot;(max-width: 590px) 100vw, 590px&quot;
+        loading=&quot;lazy&quot;
+      /&gt;
+  &lt;/a&gt;
+    &lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;El diferencial de afinidad más alto (esto es la cantidad de personas que sobresalen del promedio entre los temas de conversación) es con el genero informativo donde casi el 6.8% de las personas que hablan de empresas en el rubro de servicios financieros hablaron también de programas de TV de corte informativo; esto nos habla de una audiencia que busca información con un tono más formal.&lt;/p&gt;
+&lt;p&gt;El uso de afinidades y temáticas de contexto nacional permiten conectar más acertivamente al crear contenido que generé mayor engagement; el timing es tan importante como el tema; ahondaremos en estos temas mas adelante.&lt;/p&gt;</content:encoded></item><item><title><![CDATA[Métricas de Contenido y Metas]]></title><description><![CDATA[El engagement del contenido puede ser medido desde múltiples verticales, entre ellas: Reacciones (Likes, Favs) Comentarios / Replies Retwits…]]></description><link>https://salvador.aceves.mx/metricas-de-contenido-y-metas/</link><guid isPermaLink="false">https://salvador.aceves.mx/metricas-de-contenido-y-metas/</guid><pubDate>Tue, 01 Nov 2016 22:40:32 GMT</pubDate><content:encoded>&lt;p&gt;El engagement del contenido puede ser medido desde múltiples verticales, entre ellas:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Reacciones (Likes, Favs)&lt;/li&gt;
+&lt;li&gt;Comentarios / Replies&lt;/li&gt;
+&lt;li&gt;Retwits / Comparticiones&lt;/li&gt;
+&lt;li&gt;Views&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Estas métricas nos ayudan a entender mejor cómo la audiencia engancha con el contenido que producimos, sin embargo, uno de los clichés más grandes del contenido es el famoso “so what?”; esto es como relacionamos el contenido que compartimos con nuestra marca y que utilidad tiene para la audiencia.&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Cuando la viralidad no se traduce en indicadores reales&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;El branding, cuya medición es regularmente dificil de cuantificar fuera de métricas como el “top of mind”, es resultado de campañas diseñadas para mantener la marca presente en la mente del consumidor; esta vertiente de estratégias es regularmente válida para marcas cuyo funnel de venta es masivo o colateral a los esfuerzos publicitarios.&lt;/p&gt;
+&lt;p&gt;Coca-Cola, Marinela, Unilever y otras márcas de consumo masivo cuentan con mecanismos de venta masivos que no son fácilmente medibles o explicados como consecuencia de campañas en particular; esto es, si el nuevo comercial o campaña en redes sociales o televisión impacto en ventas o simplemente es resultado otro evento no necesariamente relacionado con la campaña; con la escepción de redención de cupones o incentivos directamente medibles en los puntos de venta.&lt;/p&gt;
+&lt;p&gt;Para empresas medianas y pequeñas los esfuerzos deben ser atados conversiones; estas conversiones pueden ser: cantidad de cuentas que se subscribieron al newsletter, personas que intercambiaron el cupón X de la campaña online, cantidad de leads de venta generados por medio de mensajes en facebook o en el caso idóneo, cantidad de ventas realizadas en el sitio web.&lt;/p&gt;
+&lt;p&gt;Cualquiera de los indicadores anteriores ayudan a mejor perfilar y re-alinear las campañas (ads, landings y procesos) para aumentar las conversiones; dentro de este rubro, herramientas de A/B testing cobran sentido escencial para basar la optimización en métricas científicas; los medios digitales permiten mutar el contenido para maximizar las conversiones, ejemplos de estas herramientas son : convert.com, ubounce.com, vwo y google analytics experiments.&lt;/p&gt;
+&lt;p&gt;Los fenómenos virales como el de Comex suelen durar 3 a 4 días y si una celebridad lo toma pueden extenderse.&lt;/p&gt;
+&lt;p&gt;&lt;span
+      class=&quot;gatsby-resp-image-wrapper&quot;
+      style=&quot;position: relative; display: block; margin-left: auto; margin-right: auto;  max-width: 590px;&quot;
+    &gt;
+      &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/d04225b80d74c45137df246181071775/11d19/41ebf-1ewibemwkgzauqnuy4rnpyq.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+    &lt;span
+    class=&quot;gatsby-resp-image-background-image&quot;
+    style=&quot;padding-bottom: 39.49999999999999%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAICAIAAAB2/0i6AAAACXBIWXMAAAsSAAALEgHS3X78AAAAxklEQVQY05WR6WoDMQyE9/2fs4XN4hzEXuuWOw6h5OiPVCz2SkjzifEy3sJUlUhFcEdExsgcf8bykqPvdCzl+6us67ZteyWlNI6Php+VhvGEmkz+p8N5WzQ8XecPzrD8H9klMT+1YigBnnAAsr8WLMiVfb+SdDMKqoK+XqU32BbuDs9YhHbR7pAj1DnMDPUFUunJJIC0645vgMNmYtDmzufThbq4hqufj5feCA05V8intVtrRPRYQVpKuVsQcVgPtQKNd5zxA5TC2HPJ3pmtAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
+  &gt;&lt;/span&gt;
+  &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        alt=&quot;41ebf 1ewibemwkgzauqnuy4rnpyq&quot;
+        title=&quot;41ebf 1ewibemwkgzauqnuy4rnpyq&quot;
+        src=&quot;/static/d04225b80d74c45137df246181071775/799d3/41ebf-1ewibemwkgzauqnuy4rnpyq.png&quot;
+        srcset=&quot;/static/d04225b80d74c45137df246181071775/00d96/41ebf-1ewibemwkgzauqnuy4rnpyq.png 148w,
+/static/d04225b80d74c45137df246181071775/0b23c/41ebf-1ewibemwkgzauqnuy4rnpyq.png 295w,
+/static/d04225b80d74c45137df246181071775/799d3/41ebf-1ewibemwkgzauqnuy4rnpyq.png 590w,
+/static/d04225b80d74c45137df246181071775/11d19/41ebf-1ewibemwkgzauqnuy4rnpyq.png 800w&quot;
+        sizes=&quot;(max-width: 590px) 100vw, 590px&quot;
+        loading=&quot;lazy&quot;
+      /&gt;
+  &lt;/a&gt;
+    &lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;Meme Comex :3 días, pero sin conversión a largo plazo.&lt;/p&gt;
+&lt;p&gt;En cambio campañas virales como la apuesta chivas-americas entre las compañías de Volaris e Interjet hecha el 26 Octubre 2016 se subió al tema de &lt;a href=&quot;https://twitter.com/hashtag/Ju%C3%A9gatelaxEllas?src=hash&quot;&gt;#JuégatelaxEllas&lt;/a&gt; para conmemorar el més del cancer de mama; genero una connotación positiva.&lt;/p&gt;
+&lt;p&gt;&lt;span
+      class=&quot;gatsby-resp-image-wrapper&quot;
+      style=&quot;position: relative; display: block; margin-left: auto; margin-right: auto;  max-width: 590px;&quot;
+    &gt;
+      &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/5ffecd3061572d5d8318b013d37cbfe0/11d19/eab2b-1it68gi891szwal3hn5g-ya.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+    &lt;span
+    class=&quot;gatsby-resp-image-background-image&quot;
+    style=&quot;padding-bottom: 50%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAKCAYAAAC0VX7mAAAACXBIWXMAAAsSAAALEgHS3X78AAACnElEQVQozy2SWU8TYRSG5z+YEIJA0FoUyiIgVqB0Wgq0VNuCDVYUEBdMQG/QK+Jyo5QtpNAC040u041OF6HWmGhMcPsN3qg3auKFV/6A7/XM1IuTfPN9med9z3kPV2sM4LjBjzpTED03sphafIVbT15j/EEJ9aYAtNYAusfi+Pr9Jz68P2IfP33Gn9+/2NGXv0za8bPzp+oYx3HobOxi3zI/wMlABUqltsXQPp5EhyuFVmcCVXo/7K4IzPYQREcAKdMGy9h8KE/G2MvJFEvPPGWbxofsccMc3OoFVhwOgZPdVel2cdq6B9fCAfipNCyzEuzzBagtYRzTCWjQCwg2LyOn9eDwUoiVx6MojYbwdlrCuxkJb1wJVujfRuzMc3Aqcwgt9gg6nHHorqegvZrA4O0seq8l0eaIomU0Bs1QEIHWFRyMCCxv3kV+cIflTNssP7TNMjoPyxq9kEw+Fte4wTUMBtE4Ekb3FREDM2mYZ7MYvpOFbT6PnokkVPTWRMAgAUVyEFE/Q7JrHQSEZPQhcXZVuRPb15A6twGuul9Q3Nnm8hi9X4DjXo7OlZbl77bLcdT37SKoWUai2Y0YldiyjDwBZahIQhntJkoOEWVnuhJK/UAAGltUccZP52G6WVScamwR1FL6KppzqG0FSfo50bmGJFXRIqA4IkCke4nfQc4g4MAarQBreFobgp4Y2iPoOix313ByOKIIVRNMBvqb3EhRe+WJGErOPRStBLT6UaCZHo6FkbngQabHW0m51uhHjYFWhxfg3TJgaclMIgLtJ4mRoIqXHa4qLcep3f0+D7L6LUgGCoP3Uts0Dpqh7PL/Hlag1foQBiYXwU88onMYdbKQAhQQIIciVZzalkGUdCUYOssz3e/14cXFGP4BlsbLCxNnnGsAAAAASUVORK5CYII=&apos;); background-size: cover; display: block;&quot;
+  &gt;&lt;/span&gt;
+  &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        alt=&quot;eab2b 1it68gi891szwal3hn5g ya&quot;
+        title=&quot;eab2b 1it68gi891szwal3hn5g ya&quot;
+        src=&quot;/static/5ffecd3061572d5d8318b013d37cbfe0/799d3/eab2b-1it68gi891szwal3hn5g-ya.png&quot;
+        srcset=&quot;/static/5ffecd3061572d5d8318b013d37cbfe0/00d96/eab2b-1it68gi891szwal3hn5g-ya.png 148w,
+/static/5ffecd3061572d5d8318b013d37cbfe0/0b23c/eab2b-1it68gi891szwal3hn5g-ya.png 295w,
+/static/5ffecd3061572d5d8318b013d37cbfe0/799d3/eab2b-1it68gi891szwal3hn5g-ya.png 590w,
+/static/5ffecd3061572d5d8318b013d37cbfe0/11d19/eab2b-1it68gi891szwal3hn5g-ya.png 800w&quot;
+        sizes=&quot;(max-width: 590px) 100vw, 590px&quot;
+        loading=&quot;lazy&quot;
+      /&gt;
+  &lt;/a&gt;
+    &lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;Banners&lt;/p&gt;
+&lt;p&gt;&lt;span
+      class=&quot;gatsby-resp-image-wrapper&quot;
+      style=&quot;position: relative; display: block; margin-left: auto; margin-right: auto;  max-width: 590px;&quot;
+    &gt;
+      &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/3337d6ab5d48ff9b23ed1cb2bf250832/11d19/363b1-1vhkvbexeydqkrf_nfbrbhq.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+    &lt;span
+    class=&quot;gatsby-resp-image-background-image&quot;
+    style=&quot;padding-bottom: 39.25%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAICAIAAAB2/0i6AAAACXBIWXMAAAsSAAALEgHS3X78AAABy0lEQVQY001RSW/TYBD13+IAJ45IbLlW3LhVoAIS4sKJLRwaARUCiRBawiIQSEZASmMnwVuoncVVUtWuEzex0zbev8Wx2jgqH9AD0tPozei9N9IM5XkBAAhCfAyAEY4JsQzf7DqBBzBpAf5PgMIQ+H5IQDmOG0Xwnw1GGEEcBUhZHbBFnX2tSXQ/CADCGIC/uQhDjCzL1nXd0PrE7IUAkBGaIBgjnOCOMCova+w7vZzfLi0a7e97EOMwjkBMFsKdDta7Y1Pbs/s+5ewHlnRorR8OG8nuZtJrBmsFnXlhsLkBndPz+V/Fp+0tBkXazFWnFnOkf0o3PyZbnw+M0gG1P/bWGX+jNNG+pT36iH/klLNWadF8viLO1wpzyuNL9aWb3IeXdeW90C1y6hO6tvS29qqgfH2zTfV2hxfkO3NKbkFZvlErXqELC19WLq89Oy/dPyfdy/DZi/yDs+LdTPthRs2eFm+d4q+fFK6d4K6eEW5TY9etmHJl1Phh1UtDsTJuVsctZiBLdkewNpi+zNuqOOpUzWZ1p8HZKmvK1UHjp93irBZF7jzF01mcpnj6ByiNXQwdgFyIPBj6EamAfNOJkiiZTWZEnBJxnBLyGyuMi/6tQAE5AAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
+  &gt;&lt;/span&gt;
+  &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        alt=&quot;363b1 1vhkvbexeydqkrf nfbrbhq&quot;
+        title=&quot;363b1 1vhkvbexeydqkrf nfbrbhq&quot;
+        src=&quot;/static/3337d6ab5d48ff9b23ed1cb2bf250832/799d3/363b1-1vhkvbexeydqkrf_nfbrbhq.png&quot;
+        srcset=&quot;/static/3337d6ab5d48ff9b23ed1cb2bf250832/00d96/363b1-1vhkvbexeydqkrf_nfbrbhq.png 148w,
+/static/3337d6ab5d48ff9b23ed1cb2bf250832/0b23c/363b1-1vhkvbexeydqkrf_nfbrbhq.png 295w,
+/static/3337d6ab5d48ff9b23ed1cb2bf250832/799d3/363b1-1vhkvbexeydqkrf_nfbrbhq.png 590w,
+/static/3337d6ab5d48ff9b23ed1cb2bf250832/11d19/363b1-1vhkvbexeydqkrf_nfbrbhq.png 800w&quot;
+        sizes=&quot;(max-width: 590px) 100vw, 590px&quot;
+        loading=&quot;lazy&quot;
+      /&gt;
+  &lt;/a&gt;
+    &lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;Apuesta Volaris-Interjet&lt;/p&gt;
+&lt;p&gt;Con este pretexto se subieron a una conversación plagada de memes, explotando la polaridad de la audiencia y alargaron la conversación creciendo su afinidad con ambas aficiones.&lt;/p&gt;
+&lt;p&gt;&lt;span
+      class=&quot;gatsby-resp-image-wrapper&quot;
+      style=&quot;position: relative; display: block; margin-left: auto; margin-right: auto;  max-width: 590px;&quot;
+    &gt;
+      &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/59c614e823e73e36b31ca04dbf6f7b18/11d19/cbaff-1vq8ssquzr0wqsgam8-gilg.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+    &lt;span
+    class=&quot;gatsby-resp-image-background-image&quot;
+    style=&quot;padding-bottom: 49.375%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAKCAIAAAA7N+mxAAAACXBIWXMAAAsSAAALEgHS3X78AAABYUlEQVQoz11RTUvDQBDN/z/7DzyJFw9Ce/CktAiKUKSWqrUUqZo2m+xHs9+78e1uBemQkMy8mTdvZqohW4wxJPNxiD4EuMM/g+u9R8pfWijxKgEumTGGEFo31BgNN3hfMpBqrZWyZ1zUu7aXEpmZK6ZipZTW2mhV79njshEHaU2yUoxK/OPtmFhuiJI9IkhPndEW3H3fC07Xn7ur2/XrhhgtwR3CUSeoOWP7hozv1/OPBhKAOusqZy06c84ZbcfT1dnlbPr8DRj9ijaMAGrA8/cvoNeTzU/DIVNKVWUNWghBu240WV3cvD287DoqjNbWOtRD8wHG6dNiez5a3M22pOMIAqswDjKklIyivKv3lLQ0rQBArsa/VoqxhJMWDwUV5ABNCwNQdiZE6lG2BbcsTGc79j8IZPrMmLc9xKRc6VJgncMIiJzc2WYDCeYHx/HO5ePyrcuGyxlPiksc0sqOSvwXbW0+R3kEZr4AAAAASUVORK5CYII=&apos;); background-size: cover; display: block;&quot;
+  &gt;&lt;/span&gt;
+  &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        alt=&quot;cbaff 1vq8ssquzr0wqsgam8 gilg&quot;
+        title=&quot;cbaff 1vq8ssquzr0wqsgam8 gilg&quot;
+        src=&quot;/static/59c614e823e73e36b31ca04dbf6f7b18/799d3/cbaff-1vq8ssquzr0wqsgam8-gilg.png&quot;
+        srcset=&quot;/static/59c614e823e73e36b31ca04dbf6f7b18/00d96/cbaff-1vq8ssquzr0wqsgam8-gilg.png 148w,
+/static/59c614e823e73e36b31ca04dbf6f7b18/0b23c/cbaff-1vq8ssquzr0wqsgam8-gilg.png 295w,
+/static/59c614e823e73e36b31ca04dbf6f7b18/799d3/cbaff-1vq8ssquzr0wqsgam8-gilg.png 590w,
+/static/59c614e823e73e36b31ca04dbf6f7b18/11d19/cbaff-1vq8ssquzr0wqsgam8-gilg.png 800w&quot;
+        sizes=&quot;(max-width: 590px) 100vw, 590px&quot;
+        loading=&quot;lazy&quot;
+      /&gt;
+  &lt;/a&gt;
+    &lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;Afinidad de Volaris antes y Después de la campaña&lt;/p&gt;
+&lt;p&gt;Volaris aumentó su afinidad con deportes del 6to lugar de una semana antes al segundo lugar; sin publicidad en el partido televisado.&lt;/p&gt;
+&lt;p&gt;&lt;span
+      class=&quot;gatsby-resp-image-wrapper&quot;
+      style=&quot;position: relative; display: block; margin-left: auto; margin-right: auto;  max-width: 590px;&quot;
+    &gt;
+      &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/7ef6bd962c9d3a408af64af8b0c0371f/11d19/81502-14olcwzp6v4o5tgcpmhxv7q.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+    &lt;span
+    class=&quot;gatsby-resp-image-background-image&quot;
+    style=&quot;padding-bottom: 61.75000000000001%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAMCAIAAADtbgqsAAAACXBIWXMAAAsSAAALEgHS3X78AAABc0lEQVQoz31SwUrDQBTsdwkK2oMH8SB+hCePXvwCFbwL9iwIguCl0KoUj1WpF0NsmmST3e0m2WQ3m2ST1pOvoEXatGQO2X0z7w1vtpFlxRxK5Ukix+OAUgYYWjb2CR0HjIVxLKD6nwxoLJzzXBdFCdB6UlVTrSsAHOF+gfkrhsJCDYZwnsQxQKRpVquciYEHPj0PY0wwpr5PEPLhX8pYykzIOE1T4ECLGjGPEt/HnHPHhs8hmIRhBJ2eOvj0pH17Y3AuwpCDi+X5DbBnWaNe76Xbfez3X10XwbTBu3e432punTU3L5+7SIhQCJVlS+Io4oRQ23ZM8wvsYp9Ov8uPAT3Ya+3uXGxvnHfabqHTVOY1tsFSEIRVVXnIgxaUUtMcGp/Gw711fHR3ffUWRSmlRKnVC3MdNBo5juMCDMME82WpGYuVUkkiIPyVUc0TziCzbJZzqScBC23bQgjBUmpXXfNI5o2EkLABxlgtYZ34D/naavEDG+2MxAvhJOEAAAAASUVORK5CYII=&apos;); background-size: cover; display: block;&quot;
+  &gt;&lt;/span&gt;
+  &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        alt=&quot;81502 14olcwzp6v4o5tgcpmhxv7q&quot;
+        title=&quot;81502 14olcwzp6v4o5tgcpmhxv7q&quot;
+        src=&quot;/static/7ef6bd962c9d3a408af64af8b0c0371f/799d3/81502-14olcwzp6v4o5tgcpmhxv7q.png&quot;
+        srcset=&quot;/static/7ef6bd962c9d3a408af64af8b0c0371f/00d96/81502-14olcwzp6v4o5tgcpmhxv7q.png 148w,
+/static/7ef6bd962c9d3a408af64af8b0c0371f/0b23c/81502-14olcwzp6v4o5tgcpmhxv7q.png 295w,
+/static/7ef6bd962c9d3a408af64af8b0c0371f/799d3/81502-14olcwzp6v4o5tgcpmhxv7q.png 590w,
+/static/7ef6bd962c9d3a408af64af8b0c0371f/11d19/81502-14olcwzp6v4o5tgcpmhxv7q.png 800w&quot;
+        sizes=&quot;(max-width: 590px) 100vw, 590px&quot;
+        loading=&quot;lazy&quot;
+      /&gt;
+  &lt;/a&gt;
+    &lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;Deportes fué el tema número en México&lt;/p&gt;
+&lt;p&gt;La Costeña, quien se publicitó en el estadio el dia del partido no generó tanta afinidad ni volumen; siendo del promedio en 6to lugar al igual que todas las marcas de su categoría, lo que quiere decir que no impactó en la audiencia de deportes.&lt;/p&gt;
+&lt;p&gt;&lt;span
+      class=&quot;gatsby-resp-image-wrapper&quot;
+      style=&quot;position: relative; display: block; margin-left: auto; margin-right: auto;  max-width: 503px;&quot;
+    &gt;
+      &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/1603662b6f25af68f25ac1f1b7ab9209/bec94/539b2-1-i3maeichuprpu8xyz-etg.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+    &lt;span
+    class=&quot;gatsby-resp-image-background-image&quot;
+    style=&quot;padding-bottom: 99.00596421471174%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAIAAAAC64paAAAACXBIWXMAAAsSAAALEgHS3X78AAACYUlEQVQ4y3VUiVbiQBDk/79KnyCIPpYlhGNdRVDIMfeRSUICu5UEOVT6+eIkM9XVVd1D69/1kEISSne73bUDrebffr/HsyxLgoiJ0QavRVHsygJbWOT5FoHFvo4L8DFFfaDAubIsrNu+rk1ENaOcM8a5UErtvzPnee6cazIAnGV5ljoibMeLexM6fFFEptiDBBzDZqPlAHZJIoUAc5qm2LY2SaxZx6rjRY9T0p/xpxk31qGczSYIw/ACfOQHWGutlLZGLdb8dhg8+NHTnPV86r1KHABsV5ZfNUMnWK21xhjOudHyz5LeDDY9P+z58eOMdSdMqKTY5ifN4GGUKa2RNXEOr1JKgIOIjv6S28G6MwoeJnF/EoP8PdJlkTvYQUiSJK2yjtqkDO+6Klq+fdD2KLzD37ACd8dRfxp3PDJfyWKb4TAAQB3KhhCoRc1SKinFYB7f/Q76E9Kf0nsv7I5DkHd98h5KtAHAC80AgxlgEKOfoAKm50f1Iup6Icq+HxMmTJ5lZW0YWtMChlIKWhSDsuGzVuLlg938CoH/pI3ao2iy4M4l1QhkGWMMTC0kaDLBbXQYVleeCfG8RHugM2p7MQQPnxm8xgzAV5Ci0or5fDZPfdbaasVxMRgnVAhZ+ZhWs5UfB/ugGYmcS1FM3epmwirxpgo8ta0mLsFWkx2VnyYMKyEEuo3Pje0InEbb60cV+NJ0lNeBxdfxPAZSoIqsDrCVn/N49T43YuD822JZuXJ2z8G/Wq02QYALe/z4w33GjcWPQVoTQjFgIEfZ6E0ckzzLf2D+Hi5xcBl4a+y5w+fxHw5pdnihK5ttAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
+  &gt;&lt;/span&gt;
+  &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        alt=&quot;539b2 1 i3maeichuprpu8xyz etg&quot;
+        title=&quot;539b2 1 i3maeichuprpu8xyz etg&quot;
+        src=&quot;/static/1603662b6f25af68f25ac1f1b7ab9209/bec94/539b2-1-i3maeichuprpu8xyz-etg.png&quot;
+        srcset=&quot;/static/1603662b6f25af68f25ac1f1b7ab9209/00d96/539b2-1-i3maeichuprpu8xyz-etg.png 148w,
+/static/1603662b6f25af68f25ac1f1b7ab9209/0b23c/539b2-1-i3maeichuprpu8xyz-etg.png 295w,
+/static/1603662b6f25af68f25ac1f1b7ab9209/bec94/539b2-1-i3maeichuprpu8xyz-etg.png 503w&quot;
+        sizes=&quot;(max-width: 503px) 100vw, 503px&quot;
+        loading=&quot;lazy&quot;
+      /&gt;
+  &lt;/a&gt;
+    &lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;Afinidad de La Costeña, luego del partido&lt;/p&gt;
+&lt;p&gt;Al final del día, el pastel del conversación y temás lo dicta la agenda social; el aprovechar esta agenda a nustra ventaja es indispensable para obtener mas impacto con un esfuerzo mas quirurgico.&lt;/p&gt;
+&lt;p&gt;Los contenidos ya no pueden ser planeados con meses de anticipación la agenda social es en tiempo-real y tener un mecanismo que permita reaccionar es fundamental para generar conversiones orgánicas de followers a fans de las marcas.&lt;/p&gt;</content:encoded></item><item><title><![CDATA[Cultural Advertising and Affinity Segmentation]]></title><description><![CDATA[Audiences have indeed shifted roles in the past 20 years, leaving room for opportunities engaging interests and generating brand affinity by…]]></description><link>https://salvador.aceves.mx/cultural-advertising-and-affinity-segmentation/</link><guid isPermaLink="false">https://salvador.aceves.mx/cultural-advertising-and-affinity-segmentation/</guid><pubDate>Mon, 23 Feb 2015 00:00:00 GMT</pubDate><content:encoded>&lt;p&gt;Audiences have indeed shifted roles in the past 20 years, leaving room for opportunities engaging interests and generating brand affinity by cultural association rather than imposition; social media plays a crucial role on these phenomena.&lt;/p&gt;
+&lt;p&gt;&lt;span
+      class=&quot;gatsby-resp-image-wrapper&quot;
+      style=&quot;position: relative; display: block; margin-left: auto; margin-right: auto;  max-width: 400px;&quot;
+    &gt;
+      &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/ff4bf9f0fb005eb029e9aad027dfa258/28275/bb342-1pdoxkyzvowwv5rifw5qyaw.jpg&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+    &lt;span
+    class=&quot;gatsby-resp-image-background-image&quot;
+    style=&quot;padding-bottom: 66.5%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/jpeg;base64,/9j/2wBDABALDA4MChAODQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2P/2wBDARESEhgVGC8aGi9jQjhCY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2P/wgARCAANABQDASIAAhEBAxEB/8QAFwABAQEBAAAAAAAAAAAAAAAAAwACBP/EABUBAQEAAAAAAAAAAAAAAAAAAAID/9oADAMBAAIQAxAAAAHrByQa1Kf/xAAcEAABBAMBAAAAAAAAAAAAAAACARESIQADIjH/2gAIAQEAAQUCLkQ2OS+vUUlWf//EABgRAAIDAAAAAAAAAAAAAAAAAAECEBEh/9oACAEDAQE/AVZK0R//xAAYEQACAwAAAAAAAAAAAAAAAAABAhARIf/aAAgBAgEBPwEhryP/xAAZEAACAwEAAAAAAAAAAAAAAAAAERAhMVH/2gAIAQEABj8C6XCGjD//xAAaEAEAAgMBAAAAAAAAAAAAAAABABEhMVFh/9oACAEBAAE/IVYgRQAJvmCoZh1EdPHZ/9oADAMBAAIAAwAAABAsL//EABkRAQACAwAAAAAAAAAAAAAAAAEAESExQf/aAAgBAwEBPxAjLnjEzuf/xAAWEQEBAQAAAAAAAAAAAAAAAAABACH/2gAIAQIBAT8QcFZDl//EABsQAQEAAwADAAAAAAAAAAAAAAERACFBMVGB/9oACAEBAAE/EKsqDrmKM68uTokW68YKsG1TeEiDiOj5kz3hx//Z&apos;); background-size: cover; display: block;&quot;
+  &gt;&lt;/span&gt;
+  &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        alt=&quot;bb342 1pdoxkyzvowwv5rifw5qyaw&quot;
+        title=&quot;bb342 1pdoxkyzvowwv5rifw5qyaw&quot;
+        src=&quot;/static/ff4bf9f0fb005eb029e9aad027dfa258/28275/bb342-1pdoxkyzvowwv5rifw5qyaw.jpg&quot;
+        srcset=&quot;/static/ff4bf9f0fb005eb029e9aad027dfa258/7237a/bb342-1pdoxkyzvowwv5rifw5qyaw.jpg 148w,
+/static/ff4bf9f0fb005eb029e9aad027dfa258/0cfdf/bb342-1pdoxkyzvowwv5rifw5qyaw.jpg 295w,
+/static/ff4bf9f0fb005eb029e9aad027dfa258/28275/bb342-1pdoxkyzvowwv5rifw5qyaw.jpg 400w&quot;
+        sizes=&quot;(max-width: 400px) 100vw, 400px&quot;
+        loading=&quot;lazy&quot;
+      /&gt;
+  &lt;/a&gt;
+    &lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;Image courtesy of &lt;a href=&quot;http://www.vieodesign.com/psychographics-to-target-the-right-customers/&quot;&gt;www.vieodesign.com&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Pushing information using direct media has been widely used on audiences since I can remember, with the commodity of communications and connections between peers, every audience has it’s own audience that nourishes it from a narcissists stand, entertainment, cultural positioning and association; it is this association from where a new subset of advertising plans emerge taking advantage of new connections not widely used for a variety of risks.&lt;/p&gt;
+&lt;p&gt;Market research provides a basis for planning and measurement of effective advertising campaigns and the effectiveness of such measurements rely on the understanding of our target; the same questions about our target evolve from early stages in advertising campaigns, doing a good job on defining location, demographics, socio-economic and age groups are one of many pillars for starting a business marketing plan; however we have to consider the psychographic and behavioural segmentation.&lt;/p&gt;
+&lt;p&gt;Psychographic segmentation is the association of similar attitudes, values and lifestyles that can lead our target to buy whatever we might be selling, with the rise of big-data measurements and social media usage in a widespread, those associations have become more effectively measured, we must approach them thinking not about how the audience that will buy the product will look like but rather on what interests that market has and under what situations we can become much more relevant.&lt;/p&gt;
+&lt;p&gt;Using today’s tools we can know what interests people that end-up buying our competition and similar market offers are being used and the only way to do that is to integrate past and present conversation behaviours to capitalize the not-so-obvious spaces that can produce a mayor difference for conversion than a widespread generic campaign.&lt;/p&gt;
+&lt;p&gt;Back in the 90s with the growth of syndicated ad-serving tools such as Google Adsense and the continued growth of its market, such integration became a science on itself, one of the cases was used to cross-reference what type of websites an audience that end up on a car rental site where visiting and revealed a not so obvious answer for car rental companies (that is airplane ticket websites and hotel reservations that are high value spaces) where obituary pages of newspapers and sport-tickets web sites, such properties where not under the radar for them to buy and where in fact low cost source for high conversion traffic.&lt;/p&gt;
+&lt;p&gt;Nowadays such correlations can be measured by defining what behaviour we want to be related to, and then address not just that answer but rather a wide variety of interests that lead to a specific set of actions, this insights can be used to maximize conversion rather than just throwing money to a high volume media.&lt;/p&gt;
+&lt;p&gt;The behavioural segmentation on times of big-data is brand association, meaning to what I want to become associated and by achieving such association it increases loyalty and identity for our audience perception of the brand; for example, selling running shoes can be challenging on a high competition market and to what activities I want to be associated is crucial in such market, classic approach includes looking into being associated with high profile athletes however opportunity has grown to be related to specifics such as city running, marathon running or even cross-fit that can be more about teamwork; people that run 5k every day have interests that tell us what their goal of association is, and by measuring their conversation and finding their common interests we can more effectively attach our brand to that objective rather that impose our own vision of the ideal consumer.&lt;/p&gt;</content:encoded></item><item><title><![CDATA[Contenido que genera contenido]]></title><description><![CDATA[Cuando hablamos de viralidad nos referimos a cantidad de veces que el mismo contenido es compartido y mutado por las audiencias; esto es mas…]]></description><link>https://salvador.aceves.mx/contenido-que-genera-contenido/</link><guid isPermaLink="false">https://salvador.aceves.mx/contenido-que-genera-contenido/</guid><pubDate>Sun, 01 Feb 2015 22:40:32 GMT</pubDate><content:encoded>&lt;p&gt;Cuando hablamos de viralidad nos referimos a cantidad de veces que el mismo contenido es compartido y mutado por las audiencias; esto es mas evidente con lo memes, el fenómeno cultural recientemente bautizado es la tropicalización o re-adaptación del contenido para generar nuevas lineas de comunicación que enganchan con valores culturales.&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Como subirse a este tren de manera constructiva, es más un asunto de forma que de control.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;El modus operandi de la publicidad tradicional es controlar el mensaje y experiencia de las audiencias; sin embargo hay más de una manera en que las cosas pueden salirse de control, por lo que la realidad es que es más un asunto de saber como subirse a la ola y esperar lo mejor; cualquier contenido es sujeto a interpretación, modificación y apropiación del mismo.&lt;/p&gt;
+&lt;p&gt;&lt;span
+      class=&quot;gatsby-resp-image-wrapper&quot;
+      style=&quot;position: relative; display: block; margin-left: auto; margin-right: auto;  max-width: 590px;&quot;
+    &gt;
+      &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/57bacb15e80fd89dea7ffcb154550d70/38c03/diagrama.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+    &lt;span
+    class=&quot;gatsby-resp-image-background-image&quot;
+    style=&quot;padding-bottom: 87.55555555555556%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAASCAYAAABb0P4QAAAACXBIWXMAAAsSAAALEgHS3X78AAADeElEQVQ4y2NITU1lZGBgYAdibiAGsTmRMDIA8YWBmA2IBYCYByYhJCSEqnLFihVhGzZsaAXiqnXr1tUuXry4KjMzUwIkV1FRAbKEITo6mnnv3r0B+/fvT9q1a1fM7t27k+bNmxcKNIwVJF9YWIgwsL+/33Py5MlFPT09edOmTcsG0ukBAQFiILmUlBSwgVFRUawzZswomTJlSs+kSZPaZ8+e3dre3l6ora0N8h1DRkYGxDCgbejeggOgq8B0WVkZmu/BQQQHtra2qLL///8HYSZDQ0OjiIgIYRAfRTc7Qn98fLyEqampLlANM7o6MHjx4gUTKICBXo5ZuXLlLiCeBeQrMTEz8aMp5QC6RHvVqlVzVq9evaOmpiYIKCYSFBoIDkNGRka4QlCsSdrZ2bHp6elLmxqbiUBjWw7NQCkgZtXR0RGXlZE1crJ0ZwFFMBALgiRZ2VghqoDeFJeSktKHOX/asSaWm/9PsAiKCJjauJmDk0Z5eTmLpKSkKTDGOZMTU5iBQrJA9YzaxhriopIiWkdfbmOGOoKBARhrK4Axu37K5CmbSiuLs2qnFS2unli0rm5qyYby3rxFoPQJlA+eOnXqnpmzZm7p6e7tsXY3C6yfVrYeqG59/bTS9YVtGXPsvay4wAZqaWlJaWpqSunq6korKisIKGnKS8mpyEhrGKhKKmspgNIio5mZGa+wsLAENBVwALE0EHNBMwOforaSuCIjAxMDMQAWFA8ePODes2eP86ZNm5yAEZJ28sRJm3379jutXbnKAKZ2ghGQqaCgwCgnJ8eorKzMKC4hxiCjKMkoLi3KKK8iwyglL8HY19cHthmYmLWAXl8FTA3z5s6dO2f2rFlz5s6bt6izublhs6iQ8f8AX1YGYkFlZSUjlnwNB88dbNlOa6gqkuRlYGJmBmZJnvz8fCGgbyxnzpjBU1tXx1/b2cl2RlVJ/L6uliROQ06ePAmmra2tYUKCYmJissBEP3PZsmW7gIl7AzBxr1u2YsX27rLSwDAGBmVOUTF+BhKAEohwdnIWcHf1ENTU0JQ2MzUXDwsJFWCQlAQlcFA6VCbaNF5eXnUUAUZgLmJl4EMKFkZeDg4lEI3VgKVLl4JjtrW1tb2zs/MEsJg6VlZSXpFZn5CR35x+Lqs26XBuY+r5uMKI3P6I6K6+2NjTE+LidvTHxu4CAN2sJMkCF5yjAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
+  &gt;&lt;/span&gt;
+  &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        alt=&quot;diagrama de transformacion de contenido&quot;
+        title=&quot;diagrama de transformacion de contenido&quot;
+        src=&quot;/static/57bacb15e80fd89dea7ffcb154550d70/799d3/diagrama.png&quot;
+        srcset=&quot;/static/57bacb15e80fd89dea7ffcb154550d70/00d96/diagrama.png 148w,
+/static/57bacb15e80fd89dea7ffcb154550d70/0b23c/diagrama.png 295w,
+/static/57bacb15e80fd89dea7ffcb154550d70/799d3/diagrama.png 590w,
+/static/57bacb15e80fd89dea7ffcb154550d70/38c03/diagrama.png 675w&quot;
+        sizes=&quot;(max-width: 590px) 100vw, 590px&quot;
+        loading=&quot;lazy&quot;
+      /&gt;
+  &lt;/a&gt;
+    &lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;El ciclo de re-creación de contenido y re-distribución es tan largo como la creatividad de las audiencias y en muchas ocasiones toman contenidos residuales y les dan un propósito nuevo para hacerlos nuevos de nuevo.&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;El enfrentar el contenido negativo con censura es echarle mas leña al fuego&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;La mejor manera de afrontar conversiones negativas es crear contenido afín a la audiencia que queremos convertir, y aprender de este ciclo para tomarlo como parte de la cultura de la marca.&lt;/p&gt;
+&lt;p&gt;Es relevante estar al tanto de 3 verticales para la creación de contenido que se alinie con tendencias:&lt;/p&gt;
+&lt;h2&gt;1. Efemérides Sociales&lt;/h2&gt;
+&lt;p&gt;¿ Que sucedieron los años anteriores en la mismas fechas ?&lt;/p&gt;
+&lt;p&gt;Y no solo hablamos de efemérides oficiales, si no de tendencias; por ejemplo, el día del no-automóvil en septiembre nos puede permitir subir al tema de manera orgánica; preparando una pauta donde si la audiencia llega a nuestro comercio en bicicleta otorgaríamos un descuento especial.&lt;/p&gt;
+&lt;p&gt;&lt;span
+      class=&quot;gatsby-resp-image-wrapper&quot;
+      style=&quot;position: relative; display: block; margin-left: auto; margin-right: auto;  max-width: 590px;&quot;
+    &gt;
+      &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/3798630788181bad0d3bb3517ad1befe/7aed3/efemerides.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+    &lt;span
+    class=&quot;gatsby-resp-image-background-image&quot;
+    style=&quot;padding-bottom: 59.58083832335329%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAMCAIAAADtbgqsAAAACXBIWXMAAAsSAAALEgHS3X78AAABx0lEQVQoz2WRy27aUBCGLWWR9+guu0bBJLERLKBNUfoWSJW6yCKPkEWrLsB2074Exn0r4zvmIoEvYOh3zmnSSh2Z0XBm/pl//tEGg3f9fr/b7ep6+/r6po3pbdPsXF3pN/qF8fa8c3nWab+5vTXJGIZpGJ3XTxsM3vd6vdFo9Pz8w7Ztx3Ysy3IcZzKZjL8+fnv6NP7y+ef4wbEnlmU7wr5jeD7t7u5Dq6V73q/T6XQ4HE7/Wb1viqLaSdvv9/+mBBg+nuftdsV8Po/juCxLutR1TSm+ripcUZANFsJyfmmartfrP5Nd122aJssyEjiCJEmpWwrL83xZVRXvq9WKWHpSKwVuTadTWDGW11hYEkUx+CQhiOiy3e6CIIiExUEQUhCGkTYcDnVdTC7LyvfnAID6vq8w0AO/2WygTQBGdaSGlHZ//5ELue6MxfgPberUtsfj8VUbaIdhCFnAsKOMRgJsmiZqI5ikvWCO1KjmhV2AISEewmiRphktIEUswJxeqs3Oghjz1UpyBbE8ALJMZm3eKVCK/AVzGilykkuDGKoyQc5ZMFutiuZyxsvOgGczr2mOvL5cS3Hjnpm6HMwXshMd5f2WpH4DLoEtJy6gXyEAAAAASUVORK5CYII=&apos;); background-size: cover; display: block;&quot;
+  &gt;&lt;/span&gt;
+  &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        alt=&quot;motor de insights SocialDecode&quot;
+        title=&quot;motor de insights SocialDecode&quot;
+        src=&quot;/static/3798630788181bad0d3bb3517ad1befe/799d3/efemerides.png&quot;
+        srcset=&quot;/static/3798630788181bad0d3bb3517ad1befe/00d96/efemerides.png 148w,
+/static/3798630788181bad0d3bb3517ad1befe/0b23c/efemerides.png 295w,
+/static/3798630788181bad0d3bb3517ad1befe/799d3/efemerides.png 590w,
+/static/3798630788181bad0d3bb3517ad1befe/7aed3/efemerides.png 668w&quot;
+        sizes=&quot;(max-width: 590px) 100vw, 590px&quot;
+        loading=&quot;lazy&quot;
+      /&gt;
+  &lt;/a&gt;
+    &lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;Hace un año el día de raza generó polaridad y este es un fenómeno que se replica año con año; el preparar contenido que genere un diálogo sobre esto puede se estratégicamente valioso.&lt;/p&gt;
+&lt;h2&gt;2. Social Listening del Sector&lt;/h2&gt;
+&lt;p&gt;¿ Cual es la conversación relacionada con mi rubro (no con mi marca) ?&lt;/p&gt;
+&lt;p&gt;Este es uno de las verticales de contenido regularmente ignorada por que nos centramos en escuchar que hablan de nosotros y en algunas ocasiones sobre la competencia, pero no del producto o el concepto que nos interesa capitalizar.&lt;/p&gt;
+&lt;p&gt;Suponiendo que somos una marca relacionada con accesorios automotrices, un sector allegado es el automovilismo, estos son los twits con mayor influencia de la semana :&lt;/p&gt;
+&lt;p&gt;&lt;span
+      class=&quot;gatsby-resp-image-wrapper&quot;
+      style=&quot;position: relative; display: block; margin-left: auto; margin-right: auto;  max-width: 461px;&quot;
+    &gt;
+      &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/0b81d6dde5f66aa37027b3f27a2f540c/793c2/conversacion.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+    &lt;span
+    class=&quot;gatsby-resp-image-background-image&quot;
+    style=&quot;padding-bottom: 73.7527114967462%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAPCAIAAABr+ngCAAAACXBIWXMAAAsSAAALEgHS3X78AAACM0lEQVQoz41TW27VMBTMTlkFv+yBJfDDDir4QKqEaMtDAlpoq17ysuM4sR3HjhPbSZyknJv+IIqA0cnEsmRr5sxxdHv57uz0RLaKc95IOQzD/e/Yfq1x8qY3rZJaq+jq8/n7t6+sc6Yz3vnR+3GcHmqeAHM3SN4h3hV7YaYRbXNhiLJ1pFVnemuM6bSGw3AFY0zwhotGPchpGsFZVVMGXFVCMCHEsq4gKYoPh/zL19H5oQfJw7Is93/FumxhXkY/TeMcfby4+HR6agfbyrY3fXh0OGyjW5RftF87G5SyjKmibhFXJLr+fhPniDFeV1WWpZQCZyUpASCyolWep4f0Js0PP7K7thN26txs7GSmxUUVKVopMEYI4SRNECqSOEY7KKWwCRcRUmJUYEwEl9AErXRdsWGw0YfL7M3ZLTTXe3//H5inAEGA4WmcomfPT548fTH00G+z7j18jGkZXNAudD50bc+EprwthKLR9W1ydR1LKdtWQSqccUiiOa6Of/gEFyk6YJqgMsE0JXVGWd4aPq02KlFWEVzXLMvyLE0xxgXChJA4hg6kpCDH/SRrhISB8W7cNU/rsucs+rFUFjyHEOYQ/ul5gflYtiWskHb0+lvx8vyubRqttbV227Y/216HcTPzNvReQsJM4kbTCJcVqbgEj1yYroOFEBJeiJQNjA1nDFgKUTJU0BTRBFcpeK4lJnUekaIguACC3MCQcw4eifPe7Qxa/A6YRzAM5cC2O9p21v8E3M1JCfVkTUwAAAAASUVORK5CYII=&apos;); background-size: cover; display: block;&quot;
+  &gt;&lt;/span&gt;
+  &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        alt=&quot;conversacion de la semana&quot;
+        title=&quot;conversacion de la semana&quot;
+        src=&quot;/static/0b81d6dde5f66aa37027b3f27a2f540c/793c2/conversacion.png&quot;
+        srcset=&quot;/static/0b81d6dde5f66aa37027b3f27a2f540c/00d96/conversacion.png 148w,
+/static/0b81d6dde5f66aa37027b3f27a2f540c/0b23c/conversacion.png 295w,
+/static/0b81d6dde5f66aa37027b3f27a2f540c/793c2/conversacion.png 461w&quot;
+        sizes=&quot;(max-width: 461px) 100vw, 461px&quot;
+        loading=&quot;lazy&quot;
+      /&gt;
+  &lt;/a&gt;
+    &lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;Y las afinidades relacionadas con las personas que hablan de automovilismo en México.&lt;/p&gt;
+&lt;p&gt;&lt;span
+      class=&quot;gatsby-resp-image-wrapper&quot;
+      style=&quot;position: relative; display: block; margin-left: auto; margin-right: auto;  max-width: 590px;&quot;
+    &gt;
+      &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/db6170ec93d8783ab9489c4348db29a4/11d19/afinidades.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+    &lt;span
+    class=&quot;gatsby-resp-image-background-image&quot;
+    style=&quot;padding-bottom: 51.75000000000001%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAKCAIAAAA7N+mxAAAACXBIWXMAAAsSAAALEgHS3X78AAABQElEQVQoz41SXU+EMBDk//+tM3rGaEQv53k+mHsqXy3dthQKhTrQ48Q3JylpdndmZ7ckIYRxHKdpGobBOXdhqhLaaOW9RxzZ1rZEZK0dve97r01bVkIq43qfIN11XbtAKf18Kh6PldROKzKmQVZKyRjjnPegzooeWugE6QQh3MBXRJyL/YHdv+cvn9zaFnEUo1QIgbY3QA6smew6B2PGGCnr86XcpezhkO2PBZfGL/LWNkbrYQOtdXSRxFGbpgE5Pee7NL97y16/KkQQB5mUgi+U3sgkCamZjE1g2tm2Imzi47t8OpWsgDEXJ6qFyLM8toqo69V23DZKoQI/mJxIu2WFkEcWq+cV35Ix43VhOHCIUqRRPXe7bnWMTwUxRWpr+3fmsAA3dMYX/vHmyIUV0AUBl2kFdhx/jST8Rez2T/wA9P9B2IWsZVgAAAAASUVORK5CYII=&apos;); background-size: cover; display: block;&quot;
+  &gt;&lt;/span&gt;
+  &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        alt=&quot;afinidades&quot;
+        title=&quot;afinidades&quot;
+        src=&quot;/static/db6170ec93d8783ab9489c4348db29a4/799d3/afinidades.png&quot;
+        srcset=&quot;/static/db6170ec93d8783ab9489c4348db29a4/00d96/afinidades.png 148w,
+/static/db6170ec93d8783ab9489c4348db29a4/0b23c/afinidades.png 295w,
+/static/db6170ec93d8783ab9489c4348db29a4/799d3/afinidades.png 590w,
+/static/db6170ec93d8783ab9489c4348db29a4/11d19/afinidades.png 800w&quot;
+        sizes=&quot;(max-width: 590px) 100vw, 590px&quot;
+        loading=&quot;lazy&quot;
+      /&gt;
+  &lt;/a&gt;
+    &lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;Esto nos puede dar una pauta de que información podemos compartir que sea afín a la audiencia que nos interesa; estar al tanto de noticias relacionadas con deportes y utilizar esto como pauta de creación es no perder relevancia con el día a día; recordemos que no solo es llevar gente con descuentos si no establecernos como autoridades en el tema.&lt;/p&gt;
+&lt;p&gt;&lt;span
+      class=&quot;gatsby-resp-image-wrapper&quot;
+      style=&quot;position: relative; display: block; margin-left: auto; margin-right: auto;  max-width: 590px;&quot;
+    &gt;
+      &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/7fe136dff0e58328bfe7e498067268b0/11d19/insights.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+    &lt;span
+    class=&quot;gatsby-resp-image-background-image&quot;
+    style=&quot;padding-bottom: 33%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAHCAIAAACHqfpvAAAACXBIWXMAAAsSAAALEgHS3X78AAAAqUlEQVQY012Q2w7DIAxD+f9/3ca9FGi701hC3fyACHbsEPcxeO/HGL13zhACZWutlML9bUDTDbxzzznv++5ijEipKS7DnHMY0NVaYbGgTex5nivGYY8NFhTilmLbNhxTSljoUVgBDhoOHaf6pTuOg2QSZHH9ApZ+p18xG/mo5Q1HgxxhuTyTAZ343snNsDKfycyCQI9PSHAvTMt8GRgB9doWG9E6/kAssi+zs5heqUtHegAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
+  &gt;&lt;/span&gt;
+  &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        alt=&quot;google insights : automovilismo&quot;
+        title=&quot;google insights : automovilismo&quot;
+        src=&quot;/static/7fe136dff0e58328bfe7e498067268b0/799d3/insights.png&quot;
+        srcset=&quot;/static/7fe136dff0e58328bfe7e498067268b0/00d96/insights.png 148w,
+/static/7fe136dff0e58328bfe7e498067268b0/0b23c/insights.png 295w,
+/static/7fe136dff0e58328bfe7e498067268b0/799d3/insights.png 590w,
+/static/7fe136dff0e58328bfe7e498067268b0/11d19/insights.png 800w&quot;
+        sizes=&quot;(max-width: 590px) 100vw, 590px&quot;
+        loading=&quot;lazy&quot;
+      /&gt;
+  &lt;/a&gt;
+    &lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;Google también nos permite encontrar los contenidos relacionados con una categoría; esto ampliar nuestro radar, donde podemos en este ejemplo ver que los videojuegos son también una buena vertical de conversación.&lt;/p&gt;
+&lt;h2&gt;3. Social Listening de la Marca y Competencia&lt;/h2&gt;
+&lt;p&gt;¿Es mucho o es poco?&lt;/p&gt;
+&lt;p&gt;Esta es la parte mas obvia pero no necesariamente bien hecha por la mayoría de las empresas; el que Telcel tenga miles de quejas solo es representativo si es proporcional a la cantidad de usuarios (o en este caso de menciones) ; por lo que conocer el estándar de la categoría en cuanto a seguidores, menciones e interacciones es relevante para saber como abordar los temas y medir mas adecuadamente el éxito de la campaña de contenido.&lt;/p&gt;
+&lt;p&gt;Cada una de las marcas genera distintos tipos de audiencia; encontrar la varianza es importante si queremos ganar terreno en el mercado.&lt;/p&gt;
+&lt;p&gt;&lt;span
+      class=&quot;gatsby-resp-image-wrapper&quot;
+      style=&quot;position: relative; display: block; margin-left: auto; margin-right: auto;  max-width: 534px;&quot;
+    &gt;
+      &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/c6e8a22f26dfae3716b9e24bd39d7f08/ecefd/banamex.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+    &lt;span
+    class=&quot;gatsby-resp-image-background-image&quot;
+    style=&quot;padding-bottom: 95.31835205992508%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAATCAIAAAAf7rriAAAACXBIWXMAAAsSAAALEgHS3X78AAACEklEQVQ4y6VUW2/TMBTu/39GY9yGEI9odGwMHhkCDQmEVqWtxjSV0kLWLnN8j5M4SeGLDyosdPDAebBqW9/5Lidu7/t/VK+z994XRVGWZZ7nSmljNFYc+tJXVbVarf4GBoanXEqJFlnmEiaN1oDF8UVymWxmRkt0BgH1ruu6CDWaSqkseIl21TSl91VdXwP7ygshlFQQ7JzLUNZqbY5OFudzXuQQ4cjRFWM4B11XNlrj2mVOh4L8xy9PX7ybC2Uya9AUrW/0TLTGGHhWUsQL9uhwfOvJ4NXHWEgct3jovwZ2Lk/TtK4qpGWtVUpxzoXg8zjZORjd24u2ng4HZ5cu09ZmCAZdkuQK3nukFoWQ0JjALE215O+j2dZu9GB/dKcf7b+ZKq0RBHw1TUOQn2Cs0AMwrCI5Kfj5l8Xd/nDn8PTh8/F2Pzo4nk2+idZ5nq+n3eukBWYyPJktt/tDCL69O7z/bPw2Wo4/c2NsWRY+VMsMQug0ts0jDAiyJTxD9uDsYu/15OjD9OTT8utSQBRuAUM0UNd6hlX0Awx6UJR2m5kQWmHy0hplNNYWuSHt7pwDHgXvcIAFnNiiNWjXGf0C4wLTIjGEhxYTJBEhfSGQCUcYWPfbbsIEaNvUNT0sFHqtv/n2Ksxp86vCHWMMhPR7/U5TzhHEP54kCOM4ZiwNXhwXHJpAvghFnm8Ed1T8+Qfwe/0AOHdA2nHbadAAAAAASUVORK5CYII=&apos;); background-size: cover; display: block;&quot;
+  &gt;&lt;/span&gt;
+  &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        alt=&quot;afinidades de Banamex&quot;
+        title=&quot;afinidades de Banamex&quot;
+        src=&quot;/static/c6e8a22f26dfae3716b9e24bd39d7f08/ecefd/banamex.png&quot;
+        srcset=&quot;/static/c6e8a22f26dfae3716b9e24bd39d7f08/00d96/banamex.png 148w,
+/static/c6e8a22f26dfae3716b9e24bd39d7f08/0b23c/banamex.png 295w,
+/static/c6e8a22f26dfae3716b9e24bd39d7f08/ecefd/banamex.png 534w&quot;
+        sizes=&quot;(max-width: 534px) 100vw, 534px&quot;
+        loading=&quot;lazy&quot;
+      /&gt;
+  &lt;/a&gt;
+    &lt;/span&gt;
+&lt;em&gt;Afinidades de Banamex&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;&lt;span
+      class=&quot;gatsby-resp-image-wrapper&quot;
+      style=&quot;position: relative; display: block; margin-left: auto; margin-right: auto;  max-width: 535px;&quot;
+    &gt;
+      &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/a7e19448e5a9ea533fce9b304fd127bb/ab4e4/banorte.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+    &lt;span
+    class=&quot;gatsby-resp-image-background-image&quot;
+    style=&quot;padding-bottom: 96.4485981308411%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAATCAIAAAAf7rriAAAACXBIWXMAAAsSAAALEgHS3X78AAACO0lEQVQ4y31TW2/TMBjt/39B4mGT0BBiL0hoe9g0QBNCXCqkbtqFhrZ0jHSsY02a2LEdO849cBJD2o6tn6LIt+PznfN97vx+OLIm1hzoLE+qqkqSJI7jPM8xFUKEUja3pO3iOrCSkjEWRRrToqySNCnLUmtNKI20vh8MWJZm+P8dZzXZrSfHP2kSR1mWmy2QY8eMF+CiKCihZg88EagjOXVE1/J8KuK4XsGujjSltM1/JW2sQptSKgxDGYrhxP/0xTn/TqA9jpT+T/YCDG1AggHIIAhkyD+e3TzdH3w4dyybgh/sWZq0Oddg2Ot5HiEEMIyBZJxTGggeHPauH7043dobvD9zjoa+9SOwb8OAqzRFRZI0yzqGE/elaWpoOeeC07E9e3Yw2tofbOz0353cnFyQzwNi2Ww2p6HAES6VWqQNcKNWzH16OSXPX42e7A23X483d/uHvenxN3I1Y1qrIs9WNMMGuN0w60jJ0YR0rfn2m/Hjl/2NHWtz9+vRwHU9FF/iAI6hIsa5Ggw2EYZ1JXQNvpwGpxf+1S//bW9y0LXta5dxBjVQBEeLIm8aT664DdlxU9CAhWgyuM0ZUFzVJgAJ2ggHVtxukW2dI7BLyYWojatDYAo7UAtYe0+dkbDruqaN0MP41FJgF5dCbZokRrMh+8dcVnhDbQNhYJ4XAgPYaRZZwGoJIiyK8m57IpAh2kuvPiCppE/8B1/VcnsjMZOC687RahjgupnjoAuRbLUG3AZSNW17x6Tl+APZ6T+ZSBNiVQAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
+  &gt;&lt;/span&gt;
+  &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        alt=&quot;afinidades de Banorte&quot;
+        title=&quot;afinidades de Banorte&quot;
+        src=&quot;/static/a7e19448e5a9ea533fce9b304fd127bb/ab4e4/banorte.png&quot;
+        srcset=&quot;/static/a7e19448e5a9ea533fce9b304fd127bb/00d96/banorte.png 148w,
+/static/a7e19448e5a9ea533fce9b304fd127bb/0b23c/banorte.png 295w,
+/static/a7e19448e5a9ea533fce9b304fd127bb/ab4e4/banorte.png 535w&quot;
+        sizes=&quot;(max-width: 535px) 100vw, 535px&quot;
+        loading=&quot;lazy&quot;
+      /&gt;
+  &lt;/a&gt;
+    &lt;/span&gt;
+&lt;em&gt;Afinidades de Banorte&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;Si comparamos la conversación orgánica entre las personas que hablan de Banamex vs las que habla de Banorte, vemos un area de oportunidad en Entretenimiento y Estilo de Vida para Banorte donde Banamex prácticamente esta dictando la pauta de la categoría.&lt;/p&gt;
+&lt;h2&gt;Del diálogo a la contribución&lt;/h2&gt;
+&lt;p&gt;Como tal las redes han abierto un canal de comunicación, sin embargo no para en solo el intercambio de quejas y conversación con clientes; la estrategia debe tomar en cuanta generar contenido que contribuya a la conversación (mas ayá del hard-sell).&lt;/p&gt;
+&lt;p&gt;Al tomar parte de esta contribución se construye una imágen de no solo proveedora de productos, si no como generadora de experiencias; al final del día si las marcas son el medio por el cual se puede generar una experiencia positiva que tenga el potencial de compartirse en mayor medida.&lt;/p&gt;
+&lt;p&gt;&lt;span
+      class=&quot;gatsby-resp-image-wrapper&quot;
+      style=&quot;position: relative; display: block; margin-left: auto; margin-right: auto;  max-width: 491px;&quot;
+    &gt;
+      &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/8a1a327855e8c5756b071363d46dcb6c/a12be/netflix.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+    &lt;span
+    class=&quot;gatsby-resp-image-background-image&quot;
+    style=&quot;padding-bottom: 96.33401221995926%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAATCAIAAAAf7rriAAAACXBIWXMAAAsSAAALEgHS3X78AAAEAElEQVQ4y33Py09iVxwH8OMTEPCiICBwuVwBgQKXi6BX3o8rw/uNOJcRRZ4KotF5aKZpZtpuumrapN3PootuJul/0l2TcdOoQcFH0kxt0zKDFtt0N+0nJyffxfme/H7g+2++/fRR/ui4c9z6pfvu/d2/bu/d/Y/e7S14kV8PDtPenLaurt++vfmt7+b+/r3b7f7zyd/nw0Dr7OynN0ftdrsfOu3Oebtzcnx6cXnZap2ddy7++LPb692++4D3vV4PXF1enZ+3b369OT9rn5ycXl9d93U6Fz+ftq6PfuxeH9/d3tz9xwLg9esfmjtP6s3HpVqzWN0ubTaLtWa1vvvysy9evPz8+cefHB48L5W3KtVGdWu3urlTrtQrlcb+48NXr74Dzd2nAIChoVEARgBgDAwwARjmQFPFfKmWL9fzZZJw9B8MDAyAe0P9ODh4n8PhFCjXtgGgQ2INW4qzYRNkdLM/IphKo0Y3n+TKXFMoKVBAqJ4D45AQozOkjHFkjC0BYDQUSoFifQcAFltjYSgtTGcQIiN0MjTqWBqzexkukunwcqwk3+Pn4Q6u1gNJCTpTTmPCANB8viioNPbA8CSiIOQunzwd1uKEwrukSiXFpE/odiOpOEZl1aUcHIjAWqtEZWOIFmhseX/YJV8M1Db3eKM8r8aU8YUqqWUqEEl4/CGrW49iApYosVuwL7g87kA0FncZFgJWl98TImaN0nFROpUDlc0nCjC5PKWMaRfWqI217HomtJwKpklnyITZYc+iA7OvU6W4J6JFsTBGNFfyiWBSItDEoxSoNg6NI/yiWJW1+1aSuRgZdRJuXEeoEUwlw2CtLuGNJCIrmNqkRjHztKacydcrTSPuCgSz/fKBbVxSkOtLGWq/stkolPabe+Fwxqi3wkL1tNkYJaPRSFYlx204EdPP760WtwtVl9ERT+RAqXGgH+VTAuXDYLLwsLCWzi3izimOnEUTQywZxBEHbEHSGzfp7C6zK6ox1ZZX1xKUlDYeCCT75eez9OlHfEVGZcr54qsJymJwzM7MmU1uFDUIWMIHVnLR8gARajTTGr/cSMVWcIV5gsb1h9Jgo/pMBCZiAkV8AnHJsLAv0d98AbOp5QapaJbH5M0bCLPZqVfNT3NQEsWpdN5jCzAZolB0BRS3nnHBeIaLFiAkKDUkE6thf9o65zWoCJinZINxORcVMmA+S8ZnIUszc1R2g0qsjo0II/1ys7EPwKCEMckfZPBo0BQPEXIRWKhEYBUkgoetSloIo6uldKGIQeNJhagK0WLqef6kLJ1ZA199+bUS1emNNg/p04RDMyazRKUSL9nFEae0EkCfxtCDqHTHj/gdFqPFvkhgs7hWZyUIb72+/xdT1aZzDzXYpgAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
+  &gt;&lt;/span&gt;
+  &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        alt=&quot;ejemplo netflix&quot;
+        title=&quot;ejemplo netflix&quot;
+        src=&quot;/static/8a1a327855e8c5756b071363d46dcb6c/a12be/netflix.png&quot;
+        srcset=&quot;/static/8a1a327855e8c5756b071363d46dcb6c/00d96/netflix.png 148w,
+/static/8a1a327855e8c5756b071363d46dcb6c/0b23c/netflix.png 295w,
+/static/8a1a327855e8c5756b071363d46dcb6c/a12be/netflix.png 491w&quot;
+        sizes=&quot;(max-width: 491px) 100vw, 491px&quot;
+        loading=&quot;lazy&quot;
+      /&gt;
+  &lt;/a&gt;
+    &lt;/span&gt;
+&lt;em&gt;Campaña Holloween de Netflix&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;&lt;span
+      class=&quot;gatsby-resp-image-wrapper&quot;
+      style=&quot;position: relative; display: block; margin-left: auto; margin-right: auto;  max-width: 490px;&quot;
+    &gt;
+      &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/778556ec6a88fb88f9ad332c3fc936f4/ea43a/blim.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+    &lt;span
+    class=&quot;gatsby-resp-image-background-image&quot;
+    style=&quot;padding-bottom: 128.16326530612244%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAaCAIAAAA44esqAAAACXBIWXMAAAsSAAALEgHS3X78AAAFW0lEQVQ4y2Po6usPi4i8ff/F+0/f/////+/fv//EAaBKhujUTAEp2Vev337+8ev7r9//SQEMr1++uHXz5pPnz9/ef/jj7Nm/795DjCVK89t37168fPXk2fNn9x+8uHjxzZOnn79+/fjx46fPn798ATHev3//48dP7JqfvXj97MWr58+f3nzw5PGbd/eevLj94PG9R0/vPnp6/8nz1x8+vXz34efvPzhsfv7k84t7P9/cf/Xo5ot7V989ufPywY23j2+9enDj9aPb/399BKHvH/59/QhC3z5CGSD2J4avc4ufxWq8SLd8BUKmL9NMXqabv0w1e51u+ird+GmS4dMko1ep+u8y1N5lqL/LUn+Xqf4uQ+NdqtKHChuGl5OL1xpW7HSsW20yd6Nd4Rbb+k3W7astGrbZtqyz6N5kOWWFydSjHlkvU6WeJSs9T1Z8ngJESs/iZV4WmzM8m5a3y1thd7jG/lDdQ+EaJyO1tgdp7w/VPBatdSRcb3eY7p4Q3avx2vdTVe4lq95LVb2XAkRqd+MVHhRZMdybmrvOR2RZsMrqYIXVwYo7I5TWhiisClLcGKq4PVwByF4XIn81WeVKsjoCpWhcjle6XmjNcHNy7slwifMJKqdiFdYGyq/wl10dKLvKX3ZdoNzpOKUzcYpnE5SPRCscCBI5ECx6MFj0AAiJ7fPjP5lhxHBhUt7OGLVDRa5AtCfHYU++8648p33FHnsLXA5kWR0qctqfaXEw1/bB0taHS1vuL258uLTp0bKWB0uaznYmMRzry1kdqrw1x35Ltt2uEq+jnWkH6iOOdKbuLvXalGaxNddxfYzW/kkVSzdsn7d42fL1W1Zt2bFy7YZ1e/ad3LKE4eDk0q01ETubEne2JO/rzdvdmnqgv+DghMKdjQm729N2taXvqA5d2ZwjJCrOycYiKKsoIK/Cyc7KxMY+ra6AYWtX/oRAjakRBhODNBfmeK6qil5ZGQUkF+d6AwWnRZlMDdGcW5liYmatraXl52zp4WEdnpAYWJC1dEozw+rW3I4Q/cnJzlNSXKamuvZFW06Mt52U6DAh0XFSgn1/nE1/uOHkkoTq6obIsOBARys/P4+qzLzlzbmr53YxLGjIzLGWKPfSLHZRao9znJgb3JnsOTk3OM/fMsBQKs9NI99RrrMgPjWjxN7W0dZE397aqiQytiXCdUZHJcPkipQ0W4WSIMtMD4NsD70iP5PSALN8b8MMD4MAC7VMb9NwU5marOiYZE/PECdj71AdGx9hSXlJObUZPc0MHUWJvjrCCc46QfYG2TH+5Ql+jVmRQLIkITDEVsdWT8lBXagyO/XMrSUtC7OK27oXNqTKuLe6Vm3YtHIxQ3NxqqeBtL+ZsoWWvKeZmo+xYqSjXoCluruJiouhoqO+krKkQHlWcnludEpEWFtTbVldDr+4kYKu86S+VobqvGQHPVlvGz0TfW1PO1Nva90Qd5tgZ9MgJ9NQFzOgS820VZJiwz097B2cLXVMTFQ0dCREBUUEeStL8hjyU2O4GBiEOJnZmZmMNBV1VOWU5GQsdJXNdVUVhDmVRNgYGRgSE+Ku37l7+PzF/Xv2Hty79/ixoydOnJw/cypDQkwEAwMDOxsrNzsLJxszKzMjBwuDECsDFxODADe7GD8HIyODjKiAnaWps62FvY2ljZWlvY2VibGRgZ4uQ3hYGFAzCwsLIyMTkMGtbytoG8Vn5sOr58TKChRkZAIBoPUIABQEkhISEgwhISFAFjMzMwNYM4eWDa9XFpdjNJdNGEQEEyA0V1dX6+rqWllZWYCBuamJubGhubEBkLS0tMAKLC0tjY2Nvb29AWN98+HbNhztAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
+  &gt;&lt;/span&gt;
+  &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        alt=&quot;ejemplo blim&quot;
+        title=&quot;ejemplo blim&quot;
+        src=&quot;/static/778556ec6a88fb88f9ad332c3fc936f4/ea43a/blim.png&quot;
+        srcset=&quot;/static/778556ec6a88fb88f9ad332c3fc936f4/00d96/blim.png 148w,
+/static/778556ec6a88fb88f9ad332c3fc936f4/0b23c/blim.png 295w,
+/static/778556ec6a88fb88f9ad332c3fc936f4/ea43a/blim.png 490w&quot;
+        sizes=&quot;(max-width: 490px) 100vw, 490px&quot;
+        loading=&quot;lazy&quot;
+      /&gt;
+  &lt;/a&gt;
+    &lt;/span&gt;
+&lt;em&gt;Campaña Holloween de Blim&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;Comprar a la audiencia para que se genere ruido puede llegar a funcionar; pero la realidad es que no es un engagemente real dado que no son el centro de la comunicación; es mejor premitir al usuario ser el que relate la historia y transforme el contenido y ser el medio para que el pueda combatirlo; más aya de fotzarlo a “probar que estas usando el producto”.&lt;/p&gt;
+&lt;p&gt;La manera adecuada de subirte a una tendencia es contribuir con contenido que ayude a explotar una tendencia sin forzarlo; una contra-tendencia es crear vínculos sin relación.&lt;/p&gt;
+&lt;p&gt;&lt;span
+      class=&quot;gatsby-resp-image-wrapper&quot;
+      style=&quot;position: relative; display: block; margin-left: auto; margin-right: auto;  max-width: 494px;&quot;
+    &gt;
+      &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/38768dab2cedc88bb96be1d2dcf6c0b8/d5e28/blim2.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+    &lt;span
+    class=&quot;gatsby-resp-image-background-image&quot;
+    style=&quot;padding-bottom: 120.64777327935224%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAYCAIAAAB1KUohAAAACXBIWXMAAAsSAAALEgHS3X78AAAFIElEQVQ4y42Sa0yTVxjHT7GFlktbWgptobVQCgV6o7QUSi9v25db7/QC9GJLaamsXAuKAyNeCmp1A0VkoRGGsxqdyeJmposLui/b4hb2ack+zEVD5ly2bF6i0QnIXviwffWfJyf/PDm/PP8854C5+YTVbv/xpwd/PXm1ubn55s2bzbfTxsYGGBobJ9IZ9+7df/Hy9fPnLzbeGkYE/vzj91/u/fzbw4erq6v37z9A9Ozps7W116/++V+vt+s/rW1rfX0dPH768tdHT1YfPf776Utk6Nr62wffBMi87+5+feXyxYXE3JXkwuXkQnJx/vzC3Ln52cXE2Q/PzS0tfJBcSlxYSiCd+bnTVz++ePv28o2bN1dWVsBXy582QQIqISUvE+QT0QwSmoYHJBwKmwJ2AJCWAtLRgIgFpIwtgwEAj9uhg2Q2m3liYgLMnJzEowGVnJqfk8ZhEERFRJ2A2tEofNej8DeUwUJac2WBmEWg4tFkAoZETCWkowpysGa9Zmp6GhwajZKxII+EySNiuAU4a3X+pK/u+hHv3ZnIt6dCtyZ9t2Le5LDJKqVT8ACflUIhpOZkAg6DFD8eA4f2R5EwOdkYOjnNoWBNhdWJvsYzYfh81HI7HvhmevedeOelkZa4T64sJeZlpxbRsypYZDYldWykD4wM9QAA6BScikcda5Oc8Gv3tSh69NJRm+zyiO3WhHcmqOlvLp/0aILaci6DWM4iiwuz64oJ+6NdYHBgC4bEjBMhdbwD0lfulJSzdJKyiVDTtUPea+OueKfGB0vlAnaTuIjHzC4tIHKo6aVEsL+/E4wM9yGxAzB3rhe+ONY2EzEcDehO9xg/Oxq8MRlcPh6+Mu4+6IOditKwsVpSlMMiYVmUdEYmGB8Kg8TxUSkV9DSUxD2yxX79nXjgh7P938/2Xt3XcnKX8kLUPr+7+fMjvpWzfV8e69RV5DKzUey8DG4uenKsH1xPHOuupfXVcw46Ko+1Vyej+i8Ou68fcHwyYl0I6eY6tPNB7aWocfmof6m3ScUhFJNQYiZRvDN9b8QPkmdiY1beHmPFAXtlrF0y2wUl+xvPhbTTtpqFLtNHfY5TtppZV92FAT1yp4KK4dPSZJzsfDyIBFzg8IE9FlWpVkjba+EfdFVNBVWLEdjJo7MyMGUMCr+IKszN2AfzZkJQI59cQUsTMTORheEx4J2QB1lYL7JtKjndry7caxbEPLWzIbhDUuIUci1cpoNf3FhMm/JDkcYyQUGGuJDAoqTm4NFZqaA76AHDg1tPlZONg0V0H1Q8YBa9H4QnbPIpb/N7Xv1Jl2G0uSbmUdZxCFx6BpOCI2ZsfTJ8Goh0+cCebZiARVcXZsJcokWUO2gUDTXwe2vZUTU3ImNHNVyjkEZNByQsCocCSFGz0AzCjl4EHh6IIDC7ViHVKhWwSqqW6wywe1erz9/u9TrdbrvZYSmSyvIEVRReJU0gZlbJeGqISsIG2kxgsG8LJuWS6xsgV6sl4Hc57WZ3u60ruKvNYWq1m812u1gul0MQrDc0GA1ytRKLz0QB4LQ0g96erdhKWZW1GfY6WwJuZ6fb6Woxttss5sZ6U1O9x2l32a1WQ5On1e4wI32rVlGTicOaDHrQ3d2NwCxp3U6JvFxdL4INJXItpxYqVWjZNariGlWZEhbq9GUqmC1TiRtMiJcZbACkaDUaEIvFmKxCiQYWKTUCuZpfqxTUqYV1kBA5FRBS200VciKeV6vkyxGvKi4pDYfD/wLmxzKffVNlPwAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
+  &gt;&lt;/span&gt;
+  &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        alt=&quot;ejemplo blim malo&quot;
+        title=&quot;ejemplo blim malo&quot;
+        src=&quot;/static/38768dab2cedc88bb96be1d2dcf6c0b8/d5e28/blim2.png&quot;
+        srcset=&quot;/static/38768dab2cedc88bb96be1d2dcf6c0b8/00d96/blim2.png 148w,
+/static/38768dab2cedc88bb96be1d2dcf6c0b8/0b23c/blim2.png 295w,
+/static/38768dab2cedc88bb96be1d2dcf6c0b8/d5e28/blim2.png 494w&quot;
+        sizes=&quot;(max-width: 494px) 100vw, 494px&quot;
+        loading=&quot;lazy&quot;
+      /&gt;
+  &lt;/a&gt;
+    &lt;/span&gt;
+&lt;em&gt;Contenido sin relación con la marca, puede ayudar a generar ruido pero sin contexto.&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;&lt;span
+      class=&quot;gatsby-resp-image-wrapper&quot;
+      style=&quot;position: relative; display: block; margin-left: auto; margin-right: auto;  max-width: 487px;&quot;
+    &gt;
+      &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/39953a34005b501517dfcbad809ebf73/4e32d/netflix2.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+    &lt;span
+    class=&quot;gatsby-resp-image-background-image&quot;
+    style=&quot;padding-bottom: 78.43942505133471%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAQCAIAAACZeshMAAAACXBIWXMAAAsSAAALEgHS3X78AAADsUlEQVQoz3WOW0xaBwCGzx72uOdla/a2ZdledntoMpfWZS5zS5zd0ppsXSuu1gldKRVLRYfYoYigUOWO6Kk4BTmAIAICouAFQZR6S4WiRRQr58CBg1x0sRsje9heti//w/f2fwCrHk/H1USQTPgAfQ6nnx2ge9HkXjR1+vuLQqHw539R+JuiALXvfYB7+93DdBZBUolkGk5gxSWxTPo4e3Jyks3mCv8PsBN+9iQYPE6n4wgMI3AyiRZJJOJIPB5PJIoOw3AsFkPRJIIgMRhJYal/ioD9KBYIHYX30b0IEtoJPw3u7oQige1QeC8SeBKKwYmzsxdprFiRz2Xz6Uw+lz/599nldnpWjaBaabCqfoMejehkSgtPNQGabNohvUw2QBfL2fa5MeeCZ2nZ6vNCfq9pZdXh9j1e3zADFGY1pf2r64RyUvOV2rtll3786HJ9xfnSMhyx5J2Pz3GJ9dKmO7caS9ndNyTgVRm/0qCg2ma6DZMChaoFaBP8JNbU/Mq/RqJX4SgXLlZ+fr+9EUf8+nZz6ZtvvdbwSwvlRh2+6n1y32cE5gVGV3ULrRJH/4Tc82k1rQxgixuZ4u/auNe7+3FNzO85woYpN3VIS6y9XfFleUnn/dq2q190tlYJJTd7OTWQnNErIYk0pDbBNVDTBMx7hkfUNK2RpdZ3KLWtBlPXmIYzKnywrONtWES70+D+LCgXMv7Y0ARMArWwQSAgKqHWoRGydrwDcPpE0BTV4GAaHAydlTm1yOtj40dZJKOoZU3RHPS6RrWgHaw4ckp1Zu68X+RY6jXPdtgWGQ5PD7DglzqWWTY3DxwhWqcIMhCvpd3UtxBmmh+MN5FlEso468Mt5kvR/jfM1k7f9ujSBujZHFjeUqwFDYDFxYXMVLOdooeuCHouih6W2zg/51U8VCxekrK/oV420l7Jyl5eowFaQbnVL7V62a7HQteqyOEZACwzPTJFvdlUN9L/w6DgnlHN0Ut5p4Y+ew9ZP0ErIeCmu18tyIGsGHD0nddMPzTamSo9XWNqt8zygdBTy8HB5HZA7p4Qo/4tO6QwgxKF1Eaj3hoQN0iYhO3hb88sl1a6Xl93UhOYDk3onh+Oba3L9nZ1QApbPM7ZjmAI4rNdbJZlmDGu6OCy+Z0s/CN2HTorPvUrF5RcUd/dUEiaxgaTiaEUqogjw5EwBGRyASyzks37Jifkg1Ke2TQQPZyKHU2enXkiYZPXPrw5B83alItz2u11Uzw2n8ssY6k5LLWQy2z+BZNuk8kD7andAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
+  &gt;&lt;/span&gt;
+  &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        alt=&quot;ejemplo netflix bien&quot;
+        title=&quot;ejemplo netflix bien&quot;
+        src=&quot;/static/39953a34005b501517dfcbad809ebf73/4e32d/netflix2.png&quot;
+        srcset=&quot;/static/39953a34005b501517dfcbad809ebf73/00d96/netflix2.png 148w,
+/static/39953a34005b501517dfcbad809ebf73/0b23c/netflix2.png 295w,
+/static/39953a34005b501517dfcbad809ebf73/4e32d/netflix2.png 487w&quot;
+        sizes=&quot;(max-width: 487px) 100vw, 487px&quot;
+        loading=&quot;lazy&quot;
+      /&gt;
+  &lt;/a&gt;
+    &lt;/span&gt;
+&lt;em&gt;Tomar una tendencia con un pretexto de comunicar un mensaje tiene mayor sentido aunque solo sea anunciar nuevo contenido.&lt;/em&gt;&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Una campaña que solo forza a un “Call to Action” en redes sociales es la manera mas rápida de alienizarte de la audiencia; la publicidad mas efectiva seguirá siendo el de boca en boca o de mention en mention, por lo que conocer un insight puede tornarse desastroso en una campaña si no se contecta con el usuario.&lt;/p&gt;
+&lt;/blockquote&gt;</content:encoded></item></channel></rss>
