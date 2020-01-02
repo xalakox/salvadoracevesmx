@@ -6,7 +6,7 @@
  */
 
 import React from "react"
-import { useStaticQuery, graphql } from "gatsby"
+import { useStaticQuery, graphql, Link } from "gatsby"
 import Image from "gatsby-image"
 
 import { rhythm } from "../utils/typography"
@@ -54,8 +54,8 @@ const Bio = () => {
         }}
       />
       <p>
-        Written by <strong>{author}</strong> who lives and works in
-        Frisco, Texas building useful things.
+        Written by <Link to="/about-salvador"><strong>{author}</strong></Link> who lives and works in
+        Frisco building useful things.
         {` `}
         <a href={`https://twitter.com/${social.twitter}`}>
         Follow me at Twitter</a>

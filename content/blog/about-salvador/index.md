@@ -1,7 +1,8 @@
 ---
 title: About Salvador
-date: "2015-05-01T22:12:03.284Z"
-description: "About Salvador Aceves "
+date: "2018-05-01T22:12:03.284Z"
+description: About Salvador Aceves
+hidden: true
 ---
 
 Hi there, I am a software developer since the Tandy TRS80 era,

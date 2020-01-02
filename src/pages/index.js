@@ -10,7 +10,7 @@ class BlogIndex extends React.Component {
   render() {
     const { data } = this.props
     const siteTitle = data.site.siteMetadata.title
-    const posts = data.allMarkdownRemark.edges
+    const posts = data.allMarkdownRemark.edges.filter(({ node: { frontmatter: { hidden } } }) => !Boolean(hidden));
 
     return (
       <Layout location={this.props.location} title={siteTitle}>
@@ -67,6 +67,7 @@ export const pageQuery = graphql`
             date(formatString: "MMMM DD, YYYY")
             title
             description
+            hidden
           }
         }
       }
