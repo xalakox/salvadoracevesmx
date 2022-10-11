@@ -54,11 +54,10 @@ const Bio = () => {
         }}
       />
       <p>
-        Written by <Link to="/about-salvador"><strong>{author}</strong></Link> who lives and works in
-        Frisco building useful things.
+        Written by <Link to="/about-salvador"><strong>{author}</strong></Link> who lives and works remotely building useful things.
         {` `}
-        <a href={`https://twitter.com/${social.twitter}`}>
-        Follow me at Twitter</a>
+        <a href={`https://github.com/xalakox`}>
+        Visit my Github profile</a>
       </p>
     </div>
   )
