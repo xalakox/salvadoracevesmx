@@ -54,7 +54,7 @@ const Bio = () => {
         }}
       />
       <p>
-        Written by <Link to="/about-salvador"><strong>{author}</strong></Link> who lives and works remotely building useful things.
+        Written by <Link to="https://github.com/xalakox"><strong>{author}</strong></Link> who lives and works remotely building useful things.
         {` `}
         <a href={`https://github.com/xalakox`}>
         Visit my Github profile</a>
